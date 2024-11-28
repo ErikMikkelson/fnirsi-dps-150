@@ -124,26 +124,26 @@
 	<body>
 		<div id="app">
 			<div class="d-flex">
-				<div class="main-view" :class="{ enabled: outputClosed }" style="width: 300px">
-					<div class="voltage">
-						<span>{{ formatNumber(outputVoltage) }}</span><span class="unit">V</span>
+				<div class="main-view" :class="{ enabled: device.outputClosed }" style="width: 300px">
+					<div class="voltage" @click="changeVoltage">
+						<span>{{ formatNumber(device.outputVoltage) }}</span><span class="unit">V</span>
 						<div class="set">
-							vset <span>{{ formatNumber(setVoltage) }}</span><span class="unit">V</span>
+							vset <span>{{ formatNumber(device.setVoltage) }}</span><span class="unit">V</span>
 						</div>
 					</div>
-					<div class="current">
-						<span>{{ formatNumber(outputCurrent) }}</span><span class="unit">A</span>
+					<div class="current" @click="changeCurrent">
+						<span>{{ formatNumber(device.outputCurrent) }}</span><span class="unit">A</span>
 						<div class="set">
-							cset <span>{{ formatNumber(setCurrent) }}</span><span class="unit">A</span>
+							cset <span>{{ formatNumber(device.setCurrent) }}</span><span class="unit">A</span>
 						</div>
 					</div>
 					<div class="power">
-						<span>{{ formatNumber(outputPower) }}</span><span class="unit">W</span>
+						<span>{{ formatNumber(device.outputPower) }}</span><span class="unit">W</span>
 					</div>
-					<div class="mode" :class="{ current: mode === 'CC', voltage: mode === 'CV' }"> {{ mode }}</div>
+					<div class="mode" :class="{ current: device.mode === 'CC', voltage: device.mode === 'CV' }"> {{ device.mode }}</div>
 					<div class="info">
-						<div class="input-voltage">input: {{ formatNumber(inputVoltage) }}V</div>
-						<div class="temp">temp: {{ temperature.toFixed(0) }}°C</div>
+						<div class="input-voltage">input: {{ formatNumber(device.inputVoltage) }}V</div>
+						<div class="temp">temp: {{ device.temperature.toFixed(0) }}°C</div>
 					</div>
 				</div>
 
@@ -152,14 +152,14 @@
 					<v-btn stacked prepent-icon="mdi-connection" @click="disconnect" v-if="port">Disconnect</v-btn>
 
 					<template v-if="port">
-						<v-btn stacked prepend-icon="mdi-power" color="green" @click="enable" v-if="!outputClosed">Enable</v-btn>
-						<v-btn stacked prepend-icon="mdi-power" color="red" @click="disable" v-if="outputClosed">Disable</v-btn>
+						<v-btn stacked prepend-icon="mdi-power" color="green" @click="enable" v-if="!device.outputClosed">Enable</v-btn>
+						<v-btn stacked prepend-icon="mdi-power" color="red" @click="disable" v-if="device.outputClosed">Disable</v-btn>
 					</template>
 				</div>
 			</div>
 
 			<div>
-				{{ modelName }} {{ firmwareVersion }} {{ hardwareVersion }}
+				{{ device.modelName }} {{ device.firmwareVersion }} {{ device.hardwareVersion }}
 			</div>
 
 			<v-btn @click="debug">Debug</v-btn>
