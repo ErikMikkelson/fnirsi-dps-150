@@ -1,14 +1,14 @@
-WebSerial / JavaScript implementation for FNRSI - DPS-150 
+WebSerial / JavaScript implementation for FNIRSI - DPS-150 
 =========================================================
 
 
-This is a simple implementation of the FNRSI - DPS-150 protocol in JavaScript. It is intended to be used with the WebSerial API, which is currently only available in Chrome.
+This is a simple implementation of the FNIRSI - DPS-150 protocol in JavaScript. It is intended to be used with the WebSerial API, which is currently only available in Chrome.
 
 https://www.fnirsi.com/products/dps-150
 
-## FNRSI - DPS-150 
+## FNIRSI - DPS-150 
 
-The FNRSI - DPS-150 is a CNC power supply working with USB-PD.
+The FNIRSI - DPS-150 is a CNC power supply working with USB-PD.
 
 This power supply can be controlled via USB. Officially, however, only software for Windows is provided.
 
