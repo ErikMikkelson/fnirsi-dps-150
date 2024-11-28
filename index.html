@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+
+		<title></title>
+
+		<link href="https://cdn.jsdelivr.net/npm/@mdi/font@5.x/css/materialdesignicons.min.css" rel="stylesheet">
+		<link href="https://cdn.jsdelivr.net/npm/vuetify@3.3.2/dist/vuetify.min.css" rel="stylesheet">
+
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=Monomaniac+One&family=Noto+Sans+JP:wght@100..900&display=swap" rel="stylesheet">
+
+		<script src="https://cdn.jsdelivr.net/npm/vue@3.5.11/dist/vue.global.min.js" defer></script>
+		<script src="https://cdn.jsdelivr.net/npm/vuetify@3.3.2/dist/vuetify.min.js" defer></script>
+		<script src="script.js" type="module" defer></script>
+
+		<link rev="made" href="mailto:cho45@lowreal.net"/>
+		<link rel="shortcut icon" href="/favicon.ico" type="image/x-icon"/>
+
+		<style>
+			.monomaniac-one-regular {
+				font-family: "Monomaniac One", sans-serif;
+				font-weight: 400;
+				font-style: normal;
+			}
+
+
+			// <uniquifier>: Use a unique and descriptive class name
+			// <weight>: Use a value from 100 to 900
+
+			.noto-sans-jp-normal {
+				font-family: "Noto Sans JP", serif;
+				font-optical-sizing: auto;
+				font-weight: 600;
+				font-style: normal;
+			}
+
+			body {
+				font-family: "Noto Sans JP", serif;
+				font-optical-sizing: auto;
+				font-weight: 600;
+				font-style: normal;
+			}
+
+			.main-view {
+				font-family: "Monomaniac One", sans-serif;
+				font-weight: 400;
+				font-style: normal;
+				font-size: 80px;
+				text-align: right;
+				line-height: 1;
+				padding: 20px;
+			}
+
+			.main-view .set {
+				font-size: 50%;
+			}
+
+			#app {
+				max-width: 800px;
+					margin: 0 auto;
+			}
+
+			.main-view .unit {
+				font-size: 50%;
+			}
+
+			.voltage {
+				color: oklch(63.11% 0.1964 139.76)
+			}
+
+			.current {
+				color: oklch(63.11% 0.1964 26.48)
+			}
+
+			.power {
+				color: oklch(63.11% 0.1964 230.46)
+			}
+
+			.mode {
+				font-size: 50%;
+			}
+
+			.info {
+				font-size: 25%;
+			}
+
+			.enabled {
+				background: repeating-linear-gradient(-45deg, #ffffff, #ffffff 5px, #fce6ba 5px, #fce6ba 10px);
+			}
+
+			.v-btn {
+				margin: 10px;
+			}
+
+
+			#numberInputting {
+				font-size: 200%;
+				text-align: right;
+				font-weight: bold;
+				padding: 20px 2px;
+			}
+			
+			#numberInput {
+				width: 100%;
+				table-layout: fixed;
+			}
+
+			#numberInput .v-btn {
+				margin: 0;
+				min-width: auto;
+				min-height: 10vh;
+				width: 100%;
+				box-sizing: border-box;
+				background: #efefef;
+				font-size: 200%;
+				text-transform: none;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="app">
+			<div class="d-flex">
+				<div class="main-view" :class="{ enabled: outputClosed }" style="width: 300px">
+					<div class="voltage">
+						<span>{{ formatNumber(outputVoltage) }}</span><span class="unit">V</span>
+						<div class="set">
+							vset <span>{{ formatNumber(setVoltage) }}</span><span class="unit">V</span>
+						</div>
+					</div>
+					<div class="current">
+						<span>{{ formatNumber(outputCurrent) }}</span><span class="unit">A</span>
+						<div class="set">
+							cset <span>{{ formatNumber(setCurrent) }}</span><span class="unit">A</span>
+						</div>
+					</div>
+					<div class="power">
+						<span>{{ formatNumber(outputPower) }}</span><span class="unit">W</span>
+					</div>
+					<div class="mode" :class="{ current: mode === 'CC', voltage: mode === 'CV' }"> {{ mode }}</div>
+					<div class="info">
+						<div class="input-voltage">input: {{ formatNumber(inputVoltage) }}V</div>
+						<div class="temp">temp: {{ temperature.toFixed(0) }}°C</div>
+					</div>
+				</div>
+
+				<div style="padding: 20px">
+					<v-btn stacked prepent-icon="mdi-connection" @click="connect" v-if="!port">Connect</v-btn>
+					<v-btn stacked prepent-icon="mdi-connection" @click="disconnect" v-if="port">Disconnect</v-btn>
+
+					<template v-if="port">
+						<v-btn stacked prepend-icon="mdi-power" color="green" @click="enable" v-if="!outputClosed">Enable</v-btn>
+						<v-btn stacked prepend-icon="mdi-power" color="red" @click="disable" v-if="outputClosed">Disable</v-btn>
+					</template>
+				</div>
+			</div>
+
+			<div>
+				{{ modelName }} {{ firmwareVersion }} {{ hardwareVersion }}
+			</div>
+
+			<v-btn @click="debug">Debug</v-btn>
+
+			<v-dialog width="auto" v-model="showNumberInput" id="numberInput">
+				<v-card :title="numberInput.title" v-if="numberInput">
+					<v-divider class="mt-3"></v-divider>
+					<v-card-text>
+
+						<div style="height: 100%; width: 100%; display: flex; flex-direction: column">
+							<div style="flex: 1">
+								<div v-html="numberInput.descriptionHtml" v-if="numberInput.descriptionHtml"></div>
+								<div v-else>
+									{{ numberInput.description || '' }}
+								</div>
+							</div>
+							<div id="numberInputting">
+								<span class="number" v-if="numberInput.input">{{ formatNumberForInput(numberInput.input) }}</span>
+								<span class="number" v-else style="color: rgba(0,0,0,.54);">{{ formatNumberForInput(numberInput.prev) }}</span>
+								<span class="unit">{{ numberInput.unit }}</span>
+							</div>
+							<table id="numberInput">
+								<tr>
+									<td><v-btn variant="tonal" class="" @click="numberInputButton">7</v-btn></td>
+									<td><v-btn variant="tonal" class="" @click="numberInputButton">8</v-btn></td>
+									<td><v-btn variant="tonal" class="" @click="numberInputButton">9</v-btn></td>
+									<td><v-btn variant="tonal" class="" @click="numberInputButton" v-show="numberInput.units[0]">{{ numberInput.units[0] }}</v-btn></td>
+								</tr>
+								<tr>
+									<td><v-btn variant="tonal" class="" @click="numberInputButton">4</v-btn></td>
+									<td><v-btn variant="tonal" class="" @click="numberInputButton">5</v-btn></td>
+									<td><v-btn variant="tonal" class="" @click="numberInputButton">6</v-btn></td>
+									<td><v-btn variant="tonal" class="" @click="numberInputButton" v-show="numberInput.units[1]">{{ numberInput.units[1] }}</v-btn></td>
+								</tr>
+								<tr>
+									<td><v-btn variant="tonal" class="" @click="numberInputButton">1</v-btn></td>
+									<td><v-btn variant="tonal" class="" @click="numberInputButton">2</v-btn></td>
+									<td><v-btn variant="tonal" class="" @click="numberInputButton">3</v-btn></td>
+									<td><v-btn variant="tonal" class="" @click="numberInputButton" v-show="numberInput.units[2]">{{ numberInput.units[2] }}</v-btn></td>
+								</tr>
+								<tr>
+									<td><v-btn variant="tonal" class="" @click="numberInputButton">0</v-btn></td>
+									<td><v-btn variant="tonal" class="" @click="numberInputButton">.</v-btn></td>
+									<td><v-btn variant="tonal" class="" @click="numberInputButton">&#x232B;</v-btn></td>
+									<td><v-btn variant="tonal" class="" @click="numberInputButton" v-show="numberInput.units[3]">{{ numberInput.units[3] }}</v-btn></td>
+								</tr>
+							</table>
+						</div>
+					</v-card-text>
+
+					<template v-slot:actions>
+						<v-btn
+							class="ms-auto"
+							text="Cancel"
+							@click="showNumberInput = false"
+							></v-btn>
+					</template>
+				</v-card>
+			</v-dialog>
+		</div>
+	</body>
+</html>
