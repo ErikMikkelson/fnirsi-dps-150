@@ -32,9 +32,9 @@ export const GROUP6_CURRENT_SET = 208;
 
 export const OVP = 209;
 export const OCP = 210;
-export const OTP = 211;
-export const LVP = 212;
-export const OPP = 213;
+export const OPP = 211;
+export const OTP = 212;
+export const LVP = 213;
 
 const OUTPUT_ENABLE = 219;
 
@@ -45,6 +45,14 @@ const MODEL_NAME = 222;
 const HARDWARE_VERSION = 223;
 const FIRMWARE_VERSION = 224;
 const ALL = 255;
+
+const PROTECTION_STATES = [
+	"OVP",
+	"OCP",
+	"OPP",
+	"OTP",
+	"LVP",
+];
 
 export class DPS150 {
 
@@ -71,6 +79,7 @@ export class DPS150 {
 	async stop() {
 		console.log('stop');
 		await this.sendCommand(HEADER_OUTPUT, CMD_XXX_193, 0, 0);
+		await this.reader.cancel();
 		await this.port.close();
 	
 	}
@@ -80,12 +89,13 @@ export class DPS150 {
 		let buffer = new Uint8Array();
 		while (this.port.readable) {
 			const reader = this.port.readable.getReader();
+			this.reader = reader;
 			try {
 				while (true) {
 					const { value, done } = await reader.read();
 					if (done) {
 						console.log('done');
-						break;
+						return;
 					}
 					let b = new Uint8Array(buffer.length + value.length);
 					b.set(buffer);
@@ -213,9 +223,9 @@ export class DPS150 {
 			case 219: // output closed?
 				callback({ outputClosed: c5[0] === 1 });
 				break;
-			case 220: // ??
+			case 220: // protection
 				let d31 = c5[0];
-				console.log(c3, c5[0]);
+				callback({ protectionState: PROTECTION_STATES[d31 - 1] });
 				break;
 			case 221: // cc=0 or cv=1
 				callback({ mode: c5[0] === 0 ? "CC" : "CV" });
@@ -275,7 +285,7 @@ export class DPS150 {
 					const d28 = view.getFloat32(99, true);  // output capacity [Ah]
 					const d29 = view.getFloat32(103, true); // output energery [Wh]
 					const d30 = c5[107]; // output closed?
-					const d31 = c5[108];
+					const d31 = c5[108]; // protection OVP=1, OCP=2, OPP=3, OTP=4, LVP=5
 					const d32 = c5[109]; // cc=0 or cv=1
 
 					const d37 = view.getFloat32(111, true); // upper limit voltage
@@ -328,6 +338,7 @@ export class DPS150 {
 						outputEnergy: d29,
 
 						outputClosed: d30 === 1,
+						protectionState: PROTECTION_STATES[d31 - 1],
 						mode: d32 === 0 ? "CC" : "CV",
 
 						upperLimitVoltage: d37,

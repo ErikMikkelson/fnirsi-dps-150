@@ -113,8 +113,9 @@ Vue.createApp({
 
 		disconnect: async function () {
 			if (this.port) {
-				this.dps.stop();
-				await port.forget();
+				await this.dps.stop();
+				await this.port.forget();
+				this.port = null;
 				console.log('forgot');
 			}
 		},
@@ -125,7 +126,13 @@ Vue.createApp({
 			this.dps = new DPS150(this.port, (data) => {
 				Object.assign(this.device, data);
 			});
-			this.dps.start();
+			window.__DPS = this.dps;
+			try {
+				await this.dps.start();
+			} catch (e) {
+				this.port = null;
+				alert(e);
+			}
 		},
 
 		debug: async function () {
