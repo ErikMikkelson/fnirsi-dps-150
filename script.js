@@ -1,4 +1,5 @@
 import { sprintf } from 'https://cdn.jsdelivr.net/npm/sprintf-js@1.1.3/+esm'
+
 import {
 	DPS150,
 	VOLTAGE_SET,
@@ -43,20 +44,53 @@ Vue.createApp({
 				outputCurrent: 0,
 				outputPower: 0,
 				temperature: 0,
-				outputClosed: false,
-				mode: "CV",
+
+				group1setVoltage: 0,
+				group1setCurrent: 0,
+				group2setVoltage: 0,
+				group2setCurrent: 0,
+				group3setVoltage: 0,
+				group3setCurrent: 0,
+				group4setVoltage: 0,
+				group4setCurrent: 0,
+				group5setVoltage: 0,
+				group5setCurrent: 0,
+				group6setVoltage: 0,
+				group6setCurrent: 0,
+
+				overVoltageProtection: 0,
+				overCurrentProtection: 0,
+				overPowerProtection: 0,
+				overTemperatureProtection: 0,
+				lowVoltageProtection: 0,
+
+				brightness: 0,
+				volume: 0,
+				meteringClosed: false,
 
 				outputCapacity: 0,
 				outputEnergy: 0,
 
-				modelName: "",
-				firmwareVersion: "",
-				hardwareVersion: "",
+				outputClosed: false,
+				protectionState: "",
+				mode: "CV",
 
 				upperLimitVoltage: 0,
 				upperLimitCurrent: 0,
+
+				modelName: "",
+				firmwareVersion: "",
+				hardwareVersion: "",
 			},
 
+			history: [
+				{
+					time: new Date(),
+					v: 0,
+					i: 0,
+					p: 0,
+				}
+			],
 
 			showNumberInput: false,
 			numberInput: {
@@ -68,13 +102,35 @@ Vue.createApp({
 				units: [],
 				input: "",
 			},
+
+			connectOverlay: true
 		}
 	},
 
 	computed: {
+		groups: function () {
+			return [1, 2, 3, 4, 5, 6].map((i) => {
+				return {
+					n: i,
+					setVoltage: this.device[`group${i}setVoltage`],
+					setCurrent: this.device[`group${i}setCurrent`],
+				};
+			});
+		}
 	},
 
 	watch: {
+		history: function () {
+			this.updateGraph();
+		},
+
+		port: function () {
+			if (!this.port) {
+				this.connectOverlay = true;
+			} else {
+				this.connectOverlay = false;
+			}
+		},
 	},
 
 	mounted() {
@@ -89,6 +145,8 @@ Vue.createApp({
 //			input: "",
 //			unit: "V",
 //		});
+
+		this.updateGraph();
 	},
 
 	methods :{
@@ -125,6 +183,15 @@ Vue.createApp({
 			this.port = port;
 			this.dps = new DPS150(this.port, (data) => {
 				Object.assign(this.device, data);
+				if (data.outputVoltage) {
+					this.history.push({
+						time: new Date(),
+						v: data.outputVoltage,
+						i: data.outputCurrent,
+						p: data.outputPower,
+					});
+					this.history = this.history.slice(-100);
+				}
 			});
 			window.__DPS = this.dps;
 			try {
@@ -136,7 +203,12 @@ Vue.createApp({
 		},
 
 		debug: async function () {
-			this.dps.getAll();
+			await this.dps.getAll();
+			for (let i = 0; i < 200; i++) {
+				const v = (Math.sin(i / 10) + 1) * 3 + 10;
+				console.log(v);
+				await __DPS.setFloatValue(193, v);
+			}
 		},
 
 		enable: async function () {
@@ -150,7 +222,7 @@ Vue.createApp({
 		changeVoltage: async function () {
 			const voltage = await this.openNumberInput({
 				title: "Input Voltage",
-				description: "Input Voltage",
+				description: `Input Voltage (max ${this.formatNumber(this.device.upperLimitVoltage)}V)`,
 				units: ["", "", "mV", "V"],
 				input: this.device.setVoltage,
 				unit: "V",
@@ -164,13 +236,69 @@ Vue.createApp({
 		changeCurrent: async function () {
 			const current = await this.openNumberInput({
 				title: "Input Current",
-				description: "Input Current",
+				description: `Input Current (max ${this.formatNumber(this.device.upperLimitCurrent)}A)`,
 				units: ["", "", "mA", "A"],
 				input: this.device.setCurrent,
 				unit: "A",
 			});
 			if (current) {
 				await this.dps.setFloatValue(CURRENT_SET, current);
+				await this.dps.getAll();
+			}
+		},
+
+		changeOVP: async function () {
+			const voltage = await this.openNumberInput({
+				title: "Over Voltage Protection",
+				description: ``,
+				units: ["", "", "mV", "V"],
+				input: this.device.overVoltageProtection,
+				unit: "V",
+			});
+			if (voltage) {
+				await this.dps.setFloatValue(OVP, voltage);
+				await this.dps.getAll();
+			}
+		},
+
+		changeOCP: async function () {
+			const current = await this.openNumberInput({
+				title: "Over Current Protection",
+				description: ``,
+				units: ["", "", "mA", "A"],
+				input: this.device.overCurrentProtection,
+				unit: "A",
+			});
+			if (current) {
+				await this.dps.setFloatValue(OCP, current);
+				await this.dps.getAll();
+			}
+		},
+
+		changeOPP: async function () {
+			const power = await this.openNumberInput({
+				title: "Over Power Protection",
+				description: ``,
+				units: ["", "", "", "W"],
+				input: this.device.overPowerProtection,
+				unit: "W",
+			});
+			if (power) {
+				await this.dps.setFloatValue(OPP, power);
+				await this.dps.getAll();
+			}
+		},
+
+		changeLVP: async function () {
+			const voltage = await this.openNumberInput({
+				title: "Low Voltage Protection",
+				description: ``,
+				units: ["", "", "mV", "V"],
+				input: this.device.lowVoltageProtection,
+				unit: "V",
+			});
+			if (voltage) {
+				await this.dps.setFloatValue(LVP, voltage);
 				await this.dps.getAll();
 			}
 		},
@@ -186,6 +314,10 @@ Vue.createApp({
 		formatNumberForInput: function (number, sep) {
 			if (!sep) sep = ',';
 			return String(number).replace(/\B(?=(\d{3})+(?!\d))/g, sep);
+		},
+
+		formatDateTime: function (date) {
+			return date.toISOString();
 		},
 
 		openNumberInput: async function (opts) {
@@ -238,6 +370,8 @@ Vue.createApp({
 				'V' : 1,
 				'mA': 1e-3,
 				'A': 1,
+				'mW': 1e-3,
+				'W': 1,
 			};
 
 			console.log(JSON.stringify(char));
@@ -269,7 +403,120 @@ Vue.createApp({
 				this.showNumberInput = false;
 			}
 			console.log(this.numberInput.input, parseFloat(this.numberInput.input));
+		},
+
+		setGroup: function (group) {
+			console.log('set group', group);
+		},
+
+		updateGraph: function () {
+			const data = [
+				{ 
+					mode: "scatter",
+					x: [],
+					y: [],
+					name: "Voltage",
+					line: {
+						width: 3,
+						color: '#38a410',
+					},
+				},
+				{
+					mode: "scatter",
+					x: [],
+					y: [],
+					name: "Current",
+					yaxis: "y2",
+					line: {
+						width: 3,
+						color: '#e84944',
+					},
+				},
+				{ 
+					mode: "scatter",
+					x: [],
+					y: [],
+					name: "Power",
+					yaxis: "y3",
+					line: {
+						width: 3,
+						color: '#0097d2',
+					},
+				},
+
+			];
+
+			for (let h of this.history) {
+				data[0].x.push(h.time);
+				data[0].y.push(h.v);
+				data[1].x.push(h.time);
+				data[1].y.push(h.i);
+				data[2].x.push(h.time);
+				data[2].y.push(h.p);
+			}
+
+			const layout = {
+				title: {text: ''},
+				showlegend: false,
+				margin: {
+					t: 0,
+					b: 50,
+					l: 0,
+					r: 0,
+				},
+				xaxis: {
+					/*
+					title: {
+						text: "time",
+					},
+					*/
+					domain: [0.1, 0.9],
+					autorange: true,
+				},
+				yaxis: {
+					title: {
+						text: "V",
+						font: {color: '#38a410'}
+					},
+					tickfont: {color: '#38a410'},
+					minallowed: 0,
+					rangemode: "tozero",
+					autorange: "max",
+				},
+				yaxis2: {
+					title: {
+						text: "I",
+						font: {color: '#e84944'}
+					},
+					tickfont: {color: '#e84944'},
+					anchor: 'free',
+					overlaying: 'y',
+					side: 'left',
+					position: 0.05,
+					minallowed: 0,
+					rangemode: "tozero",
+					autorange: "max",
+				},
+				yaxis3: {
+					title: {
+						text: "P",
+						font: {color: '#0097d2'}
+					},
+					tickfont: {color: '#0097d2'},
+					anchor: 'x',
+					overlaying: 'y',
+					side: 'right',
+					minallowed: 0,
+					rangemode: "tozero",
+					autorange: "max",
+				},
+			};
+
+			Plotly.react(this.$refs.graph, data, layout, {
+				displayModeBar: false,
+			});
 		}
+
 	}
 }).use(Vuetify.createVuetify({
 	theme: {

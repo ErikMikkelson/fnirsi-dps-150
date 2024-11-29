@@ -47,6 +47,7 @@ const FIRMWARE_VERSION = 224;
 const ALL = 255;
 
 const PROTECTION_STATES = [
+	"",
 	"OVP",
 	"OCP",
 	"OPP",
@@ -190,7 +191,7 @@ export class DPS150 {
 		const writer = this.port.writable.getWriter();
 		try {
 			await writer.write(command);
-			await sleep(100);
+			await sleep(50);
 		} finally{
 			writer.releaseLock();
 		}
@@ -225,7 +226,7 @@ export class DPS150 {
 				break;
 			case 220: // protection
 				let d31 = c5[0];
-				callback({ protectionState: PROTECTION_STATES[d31 - 1] });
+				callback({ protectionState: PROTECTION_STATES[d31] });
 				break;
 			case 221: // cc=0 or cv=1
 				callback({ mode: c5[0] === 0 ? "CC" : "CV" });
@@ -338,7 +339,7 @@ export class DPS150 {
 						outputEnergy: d29,
 
 						outputClosed: d30 === 1,
-						protectionState: PROTECTION_STATES[d31 - 1],
+						protectionState: PROTECTION_STATES[d31],
 						mode: d32 === 0 ? "CC" : "CV",
 
 						upperLimitVoltage: d37,
