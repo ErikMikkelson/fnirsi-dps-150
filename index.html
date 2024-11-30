@@ -131,6 +131,10 @@
 				visibility: visible;
 			}
 
+			.groups .changeable.changed {
+				background: #ffcccc;
+			}
+
 			#numberInputting {
 				font-size: 200%;
 				text-align: right;
@@ -270,15 +274,21 @@
 					</v-card>
 					<v-card title="Memory Groups">
 						<template v-slot:text>
-							<v-table density="compact" style="max-width: 30em">
+							<v-table density="compact" style="max-width: 30em" class="groups">
 								<template v-if="true">
 									<tbody>
 										<tr v-for="group in groups">
 											<td>
-												<v-btn size="x-small" color="green" variant="flat" @click="setGroup(group)">M{{ group.n }}</v-btn>
+												<v-btn size="x-small" :color="groupChanged(group) ? 'red' : 'green'" variant="flat" @click="setGroup(group)">M{{ group.n }}</v-btn>
 											</td>
-											<td>{{ formatNumber(group.setVoltage) }}V</td>
-											<td>{{ formatNumber(group.setCurrent) }}A</td>
+											<td @click="editGroupVoltage(group)" class="changeable" :class="{ changed: groupChanged(group, 'V') }">
+												{{ formatNumber(groupsInput[group.n].setVoltage || group.setVoltage) }}V
+												<v-btn size="x-small" color="green" variant="flat">set</v-btn>
+											</td>
+											<td @click="editGroupCurrent(group)" class="changeable" :class="{ changed: groupChanged(group, 'I') }">
+												{{ formatNumber(groupsInput[group.n].setCurrent || group.setCurrent) }}A
+												<v-btn size="x-small" color="green" variant="flat">set</v-btn>
+											</td>
 										</tr>
 									</tbody>
 								</template>

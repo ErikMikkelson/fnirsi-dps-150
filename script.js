@@ -92,6 +92,33 @@ Vue.createApp({
 				}
 			],
 
+			groupsInput: {
+				1: {
+					setVoltage: null,
+					setCurrent: null,
+				},
+				2: {
+					setVoltage: null,
+					setCurrent: null,
+				},
+				3: {
+					setVoltage: null,
+					setCurrent: null,
+				},
+				4: {
+					setVoltage: null,
+					setCurrent: null,
+				},
+				5: {
+					setVoltage: null,
+					setCurrent: null,
+				},
+				6: {
+					setVoltage: null,
+					setCurrent: null,
+				}
+			},
+
 			showNumberInput: false,
 			numberInput: {
 				result: "",
@@ -440,8 +467,8 @@ Vue.createApp({
 		setGroup: async function (group) {
 			console.log('set group', group);
 			const groupNumber = group.n;
-			const setVoltage = group.setVoltage;
-			const setCurrent = group.setCurrent;
+			const setVoltage = this.groupsInput[group.n].setVoltage || group.setVoltage;
+			const setCurrent = this.groupsInput[group.n].setCurrent || group.setCurrent;
 
 			const cmdVoltage = GROUP1_VOLTAGE_SET + (groupNumber - 1) * 2;
 			const cmdCurrent = GROUP1_CURRENT_SET + (groupNumber - 1) * 2;
@@ -451,6 +478,49 @@ Vue.createApp({
 			await this.dps.setFloatValue(cmdVoltage, setVoltage);
 			await this.dps.setFloatValue(cmdCurrent, setCurrent);
 			await this.dps.getAll();
+
+			this.groupsInput[group.n].setVoltage = null;
+			this.groupsInput[group.n].setCurrent = null
+		},
+
+		editGroupVoltage: async function (group) {
+			const voltage = await this.openNumberInput({
+				title: `Edit Group ${group.n} Voltage`,
+				description: ``,
+				units: ["", "", "mV", "V"],
+				input: group.setVoltage,
+				unit: "V",
+			});
+			if (voltage) {
+				this.groupsInput[group.n].setVoltage = voltage;
+			}
+		},
+
+		editGroupCurrent: async function (group) {
+			const current = await this.openNumberInput({
+				title: `Edit Group ${group.n} Current`,
+				description: ``,
+				units: ["", "", "mA", "A"],
+				input: group.setCurrent,
+				unit: "A",
+			});
+			if (current) {
+				this.groupsInput[group.n].setCurrent = current;
+			}
+		},
+
+		groupChanged: function (group, type) {
+			const input = this.groupsInput[group.n];
+			if (!type || type === 'V') {
+				if (input.setVoltage !== null && input.setVoltage !== group.setVoltage) {
+					return true;
+				}
+			}
+			if (!type || type === 'I') {
+				if (input.setCurrent !== null && input.setCurrent !== group.setCurrent) {
+					return true;
+				}
+			}
 		},
 
 		updateGraph: function () {
@@ -559,8 +629,7 @@ Vue.createApp({
 			Plotly.react(this.$refs.graph, data, layout, {
 				displayModeBar: false,
 			});
-		}
-
+		},
 	}
 }).use(Vuetify.createVuetify({
 	theme: {
