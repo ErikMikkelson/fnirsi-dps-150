@@ -6,7 +6,7 @@
 
 		<title></title>
 
-		<link href="https://cdn.jsdelivr.net/npm/@mdi/font@5.x/css/materialdesignicons.min.css" rel="stylesheet">
+		<link href="https://cdn.jsdelivr.net/npm/@mdi/font@7.x/css/materialdesignicons.min.css" rel="stylesheet">
 		<link href="https://cdn.jsdelivr.net/npm/vuetify@3.3.2/dist/vuetify.min.css" rel="stylesheet">
 
 		<link rel="preconnect" href="https://fonts.googleapis.com">
@@ -124,7 +124,7 @@
 
 			.changeable:hover {
 				cursor: pointer;
-				background: #efefef;
+				background: rgb(200, 200, 200, 0.5);
 			}
 
 			.changeable:hover .v-btn {
@@ -174,19 +174,23 @@
 						<span class="input-voltage">Input: {{ formatNumber(device.inputVoltage) }}V</span>
 					</span>
 
-					<v-btn class="connect" icon title="Connect" @click="connect" v-if="!port">
+					<v-btn class="connect" icon  variant="flat" color="red" @click="connect" v-if="!port">
 						<v-icon>mdi-link-off</v-icon>
+						<v-tooltip activator="parent" location="bottom">Connect</v-tooltip>
 					</v-btn>
-					<v-btn class="disconnect" icon title="Disconnect" @click="disconnect" v-else>
+					<v-btn class="disconnect" icon variant="flat" color="green" @click="disconnect" v-else>
 						<v-icon>mdi-link</v-icon>
+						<v-tooltip activator="parent" location="bottom">Disconnect</v-tooltip>
 					</v-btn>
 
 					<v-btn icon variant="flat" color="green" @click="enable" v-if="!device.outputClosed" title="Enable" :disabled="!port">
 						<v-icon>mdi-power</v-icon>
+						<v-tooltip activator="parent" location="bottom">Enable Output</v-tooltip>
 					</v-btn>
 
 					<v-btn icon variant="flat" color="red" @click="disable" v-if="device.outputClosed" title="Disable">
 						<v-icon>mdi-power</v-icon>
+						<v-tooltip activator="parent" location="bottom">Disable Output</v-tooltip>
 					</v-btn>
 
 					<v-menu>
@@ -203,18 +207,18 @@
 				</v-toolbar>
 
 				<div class="d-flex">
-					<div class="flex-fill" style="padding: 10px;">
-						<div ref="graph" stlye="width: 100%; height: 500px"></div>
+					<div class="flex-fill" style="padding: 10px; height: 500px">
+						<div ref="graph" stlye=""></div>
 					</div>
 
 					<div class="main-view" :class="{ enabled: device.outputClosed }" style="width: 300px">
-						<div class="voltage" @click="changeVoltage">
+						<div class="changeable voltage" @click="changeVoltage">
 							<span>{{ formatNumber(device.outputVoltage) }}</span><span class="unit">V</span>
 							<div class="set">
 								vset <span>{{ formatNumber(device.setVoltage) }}</span><span class="unit">V</span>
 							</div>
 						</div>
-						<div class="current" @click="changeCurrent">
+						<div class="changeable current" @click="changeCurrent">
 							<span>{{ formatNumber(device.outputCurrent) }}</span><span class="unit">A</span>
 							<div class="set">
 								cset <span>{{ formatNumber(device.setCurrent) }}</span><span class="unit">A</span>
@@ -239,7 +243,7 @@
 					</p>
 				</div -->
 
-				<v-container class="d-flex">
+				<v-container class="d-flex flex-wrap">
 					<v-card :title="`Metering ${ device.meteringClosed ? 'OFF' : 'ON' }`">
 						<v-btn @click="startMetering" v-if="device.meteringClosed">Start</v-btn>
 						<v-btn @click="stopMetering" v-else>Stop</v-btn>
@@ -279,7 +283,12 @@
 									<tbody>
 										<tr v-for="group in groups">
 											<td>
-												<v-btn size="x-small" :color="groupChanged(group) ? 'red' : 'green'" variant="flat" @click="setGroup(group)">M{{ group.n }}</v-btn>
+												<v-btn size="x-small" :color="groupChanged(group) ? 'red' : 'green'" variant="flat" @click="setGroup(group)">
+													M{{ group.n }}
+													<v-tooltip activator="parent" location="start">
+														{{ groupChanged(group) ? 'Update with changed values' : `Set M${group.n}` }}
+													</v-tooltip>
+												</v-btn>
 											</td>
 											<td @click="editGroupVoltage(group)" class="changeable" :class="{ changed: groupChanged(group, 'V') }">
 												{{ formatNumber(groupsInput[group.n].setVoltage || group.setVoltage) }}V
@@ -339,6 +348,61 @@
 									</tbody>
 								</template>
 							</v-table>
+						</template>
+					</v-card>
+
+					<v-card title="Program" style="">
+						<template v-slot:text>
+							<div class="d-flex">
+								<v-textarea class="flex-fill" v-model="program" prepend-icon="mdi-code-block-parentheses"
+									style="width: 20em"
+									rows="10"
+									auto-grow
+									></v-textarea>
+								<v-table density="compact" style="width: 30em">
+									<template v-if="true">
+										<tbody>
+											<tr>
+												<th>V(v)</th>
+												<td>Set voltage to `v`</td>
+											</tr>
+											<tr>
+												<th>V()</th>
+												<td>Get current set voltage</td>
+											</tr>
+											<tr>
+												<th>I(i)</th>
+												<td>Set current to `i`</td>
+											</tr>
+											<tr>
+												<th>I()</th>
+												<td>Get current set current</td>
+											</tr>
+											<tr>
+												<th>ON()</th>
+												<td>Enable output</td>
+											</tr>
+											<tr>
+												<th>OFF()</th>
+												<td>Disable output</td>
+											</tr>
+											<tr>
+												<th>SLEEP(ms)</th>
+												<td>Sleep `ms`</td>
+											</tr>
+											<tr>
+												<th>times(n)</th>
+												<td>Utility loop function</td>
+											</tr>
+										</tbody>
+									</template>
+								</v-table>
+							</div>
+							<v-btn color="green" @click="runProgram" v-if="!evalAbortController">Run</v-btn>
+							<v-btn color="red" @click="evalAbortController.abort()" v-else>Abort ({{ programRemaining }} remains)</v-btn>
+							<p class="note">
+								The program is executed once and for all. It then builds a command queue. The actual output control is then performed according to the command queue.
+							</p>
 						</template>
 					</v-card>
 				</v-container>

@@ -130,7 +130,11 @@ Vue.createApp({
 				input: "",
 			},
 
-			connectOverlay: true
+			connectOverlay: true,
+
+			program: "",
+			programRemaining: 0,
+			evalAbortController: null,
 		}
 	},
 
@@ -172,6 +176,19 @@ Vue.createApp({
 //			input: "",
 //			unit: "V",
 //		});
+
+		this.program = `
+			V(9.0)
+			I(1.0)
+			ON()
+			SLEEP(1000)
+			for (const _ of times(10)) {
+			  V(V() + 0.1)
+			  SLEEP(200)
+			}
+			OFF()
+		`.trim().replace(/\t+/g, '');
+
 
 		this.updateGraph();
 	},
@@ -223,7 +240,7 @@ Vue.createApp({
 					this.history = this.history.slice(-100);
 				}
 			});
-			window.__DPS = this.dps;
+			window.APP = this;
 			try {
 				await this.dps.start();
 			} catch (e) {
@@ -628,8 +645,89 @@ Vue.createApp({
 
 			Plotly.react(this.$refs.graph, data, layout, {
 				displayModeBar: false,
+				responsive: true,
 			});
 		},
+
+
+		evaluateDSL: async function (text) {
+			let tempV = this.device.setVoltage;
+			let tempI = this.device.setCurrent;
+			const queue = [];
+			const scope = {
+				V: (v) => {
+					if (v) {
+						tempV = v;
+						queue.push({type: 'V', args: [v]});
+					} else {
+						return tempV;
+					}
+				},
+				I: (i) => {
+					if (i) {
+						tempI = i;
+						queue.push({type: 'I', args: [i]});
+					} else {
+						return tempI;
+					}
+				},
+				ON: () => {
+					queue.push({type: 'ON'});
+				},
+				OFF: () => {
+					queue.push({type: 'OFF'});
+				},
+				SLEEP: (n) => {
+					queue.push({type: 'SLEEP', args: [n] });
+				},
+				times: function* (n) {
+					for (let i = 0; i < n; i++) {
+						yield i;
+					}
+				}
+			};
+
+			const argumentNames = Object.keys(scope);
+			const argumentValues = argumentNames.map((name) => scope[name]);
+
+			this.evalAbortController = new AbortController();
+			const signal = this.evalAbortController.signal;
+
+			Function.apply(null, argumentNames.concat(text)).apply(null, argumentValues);
+
+			console.log(queue);
+			while (queue.length > 0) {
+				this.programRemaining = queue.length;
+				const cmd = queue.shift();
+				if (cmd.type === 'V') {
+					await this.dps.setFloatValue(VOLTAGE_SET, cmd.args[0]);
+				} else
+				if (cmd.type === 'I') {
+					await this.dps.setFloatValue(CURRENT_SET, cmd.args[0]);
+				} else
+				if (cmd.type === 'ON') {
+					await this.dps.enable();
+				} else
+				if (cmd.type === 'OFF') {
+					await this.dps.disable();
+				} else
+				if (cmd.type === 'SLEEP') {
+					await sleep(cmd.args[0]);
+				}
+				await this.dps.getAll();
+				if (signal.aborted) {
+					console.log('canceled');
+					this.dps.disable();
+					break;
+				}
+			}
+
+			this.evalAbortController = null;
+		},
+
+		runProgram: function () {
+			this.evaluateDSL(this.program);
+		}
 	}
 }).use(Vuetify.createVuetify({
 	theme: {
