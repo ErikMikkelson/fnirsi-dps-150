@@ -110,6 +110,26 @@
 				margin: 10px;
 			}
 
+			.v-card {
+				margin: 10px;
+			}
+
+			.changeable {
+				cursor: pointer;
+			}
+
+			.changeable .v-btn {
+				visibility: hidden;
+			}
+
+			.changeable:hover {
+				cursor: pointer;
+				background: #efefef;
+			}
+
+			.changeable:hover .v-btn {
+				visibility: visible;
+			}
 
 			#numberInputting {
 				font-size: 200%;
@@ -137,144 +157,197 @@
 	</head>
 	<body>
 		<div id="app">
-			<v-toolbar density="default">
-				<v-toolbar-title>
-					{{ device.modelName }} {{ device.firmwareVersion }} {{ device.hardwareVersion }}
-				</v-toolbar-title>
+			<v-app>
+				<v-toolbar density="default">
+					<v-toolbar-title>
+						{{ device.modelName }} {{ device.firmwareVersion }} {{ device.hardwareVersion }}
+					</v-toolbar-title>
 
-				<v-spacer></v-spacer>
+					<v-spacer></v-spacer>
 
-				<span class="ms-2">
-					{{ device.temperature.toFixed(0) }}°C
-					<span class="input-voltage">Input: {{ formatNumber(device.inputVoltage) }}V</span>
-				</span>
+					<span class="ms-2">
+						{{ device.temperature.toFixed(0) }}°C
+						<span class="input-voltage">Input: {{ formatNumber(device.inputVoltage) }}V</span>
+					</span>
 
-				<v-btn class="connect" icon title="Connect" @click="connect" v-if="!port">
-					<v-icon>mdi-connection</v-icon>
-				</v-btn>
-				<v-btn class="disconnect" icon title="Disconnect" @click="disconnect" v-else>
-					<v-icon>mdi-connection</v-icon>
-				</v-btn>
+					<v-btn class="connect" icon title="Connect" @click="connect" v-if="!port">
+						<v-icon>mdi-link-off</v-icon>
+					</v-btn>
+					<v-btn class="disconnect" icon title="Disconnect" @click="disconnect" v-else>
+						<v-icon>mdi-link</v-icon>
+					</v-btn>
 
-				<v-btn icon variant="flat" color="green" @click="enable" v-if="!device.outputClosed" title="Enable" :disabled="!port">
-					<v-icon>mdi-power</v-icon>
-				</v-btn>
+					<v-btn icon variant="flat" color="green" @click="enable" v-if="!device.outputClosed" title="Enable" :disabled="!port">
+						<v-icon>mdi-power</v-icon>
+					</v-btn>
 
-				<v-btn icon variant="flat" color="red" @click="disable" v-if="device.outputClosed" title="Disable">
-					<v-icon>mdi-power</v-icon>
-				</v-btn>
+					<v-btn icon variant="flat" color="red" @click="disable" v-if="device.outputClosed" title="Disable">
+						<v-icon>mdi-power</v-icon>
+					</v-btn>
 
-				<v-menu>
-					<template v-slot:activator="{ props }">
-						<v-btn icon="mdi-dots-vertical" variant="text" v-bind="props"></v-btn>
-					</template>
+					<v-menu>
+						<template v-slot:activator="{ props }">
+							<v-btn icon="mdi-dots-vertical" variant="text" v-bind="props"></v-btn>
+						</template>
 
-					<v-list>
-						<v-list-item>
-							<v-list-item-title>test</v-list-item-title>
-						</v-list-item>
-					</v-list>
-				</v-menu>
-			</v-toolbar>
+						<v-list>
+							<v-list-item>
+								<v-list-item-title>test</v-list-item-title>
+							</v-list-item>
+						</v-list>
+					</v-menu>
+				</v-toolbar>
 
-			<div class="d-flex">
-				<div class="flex-fill" style="padding: 10px;">
-					<div ref="graph" stlye="width: 100%; height: 500px"></div>
+				<div class="d-flex">
+					<div class="flex-fill" style="padding: 10px;">
+						<div ref="graph" stlye="width: 100%; height: 500px"></div>
+					</div>
+
+					<div class="main-view" :class="{ enabled: device.outputClosed }" style="width: 300px">
+						<div class="voltage" @click="changeVoltage">
+							<span>{{ formatNumber(device.outputVoltage) }}</span><span class="unit">V</span>
+							<div class="set">
+								vset <span>{{ formatNumber(device.setVoltage) }}</span><span class="unit">V</span>
+							</div>
+						</div>
+						<div class="current" @click="changeCurrent">
+							<span>{{ formatNumber(device.outputCurrent) }}</span><span class="unit">A</span>
+							<div class="set">
+								cset <span>{{ formatNumber(device.setCurrent) }}</span><span class="unit">A</span>
+							</div>
+						</div>
+						<div class="power">
+							<span>{{ formatNumber(device.outputPower) }}</span><span class="unit">W</span>
+						</div>
+						<v-chip :class="{ current: device.mode === 'CC', voltage: device.mode === 'CV' }" variant="flat" size="large">
+							{{ device.mode }}
+						</v-chip>
+						<v-chip :color="device.protectionState ? 'red' : 'green' " variant="flat" size="large">
+							{{ device.protectionState || "OK" }}
+						</v-chip>
+					</div>
 				</div>
 
-				<div class="main-view" :class="{ enabled: device.outputClosed }" style="width: 300px">
-					<div class="voltage" @click="changeVoltage">
-						<span>{{ formatNumber(device.outputVoltage) }}</span><span class="unit">V</span>
-						<div class="set">
-							vset <span>{{ formatNumber(device.setVoltage) }}</span><span class="unit">V</span>
-						</div>
-					</div>
-					<div class="current" @click="changeCurrent">
-						<span>{{ formatNumber(device.outputCurrent) }}</span><span class="unit">A</span>
-						<div class="set">
-							cset <span>{{ formatNumber(device.setCurrent) }}</span><span class="unit">A</span>
-						</div>
-					</div>
-					<div class="power">
-						<span>{{ formatNumber(device.outputPower) }}</span><span class="unit">W</span>
-					</div>
-					<v-chip :class="{ current: device.mode === 'CC', voltage: device.mode === 'CV' }" variant="flat" size="large">
-						{{ device.mode }}
-					</v-chip>
-					<v-chip :color="device.protectionState ? 'red' : 'green' " variant="flat" size="large">
-						{{ device.protectionState || "OK" }}
-					</v-chip>
-				</div>
-			</div>
+				<!-- div>
+					<p>
+						brightness: {{ device.brightness }}
+						volume: {{ device.volume }}
+					</p>
+				</div -->
 
-			<div>
-				<p>
-					metering:
-					{{ device.meteringClosed ? 'OFF' : 'ON' }}
-				</p>
-				<p>
-					brightness: {{ device.brightness }}
-					volume: {{ device.volume }}
-					outputCapacity: {{ device.outputCapacity }}
-					outputEnergy: {{ device.outputEnergy }}
-				</p>
-				<v-table density="compact">
+				<v-container class="d-flex">
+					<v-card :title="`Metering ${ device.meteringClosed ? 'OFF' : 'ON' }`">
+						<v-btn @click="startMetering" v-if="device.meteringClosed">Start</v-btn>
+						<v-btn @click="stopMetering" v-else>Stop</v-btn>
+						<v-table density="compact" style="max-width: 30em">
+							<template v-if="true">
+								<tbody>
+									<tr>
+										<td>Output Capacity</td>
+										<td>
+											<span v-if="device.outputCapacity < 1">
+												{{ formatNumber(device.outputCapacity * 1000) }}mWh
+											</span>
+											<span v-else>
+												{{ formatNumber(device.outputCapacity) }}Wh
+											</span>
+										</td>
+									</tr>
+									<tr>
+										<td>Output Energy</td>
+										<td>
+											<span v-if="device.outputEnergy < 1">
+												{{ formatNumber(device.outputEnergy * 1000) }}mWh
+											</span>
+											<span v-else>
+												{{ formatNumber(device.outputEnergy) }}Wh
+											</span>
+										</td>
+									</tr>
+								</tbody>
+							</template>
+						</v-table>
+					</v-card>
+					<v-card title="Memory Groups">
+						<template v-slot:text>
+							<v-table density="compact" style="max-width: 30em">
+								<template v-if="true">
+									<tbody>
+										<tr v-for="group in groups">
+											<td>
+												<v-btn size="x-small" color="green" variant="flat" @click="setGroup(group)">M{{ group.n }}</v-btn>
+											</td>
+											<td>{{ formatNumber(group.setVoltage) }}V</td>
+											<td>{{ formatNumber(group.setCurrent) }}A</td>
+										</tr>
+									</tbody>
+								</template>
+							</v-table>
+						</template>
+					</v-card>
+
+					<v-card title="Protections">
+						<template v-slot:text>
+							<v-table density="compact" style="max-width: 30em">
+								<template v-if="true">
+									<tbody>
+										<tr>
+											<th>Over Voltage Protection</th>
+											<td @click="changeOVP" class="changeable">
+												{{ formatNumber(device.overVoltageProtection) }}V
+												<v-btn size="x-small" color="green" variant="flat">set</v-btn>
+											</td>
+										</tr>
+										<tr>
+											<th>Over Current Protection</th>
+											<td @click="changeOCP" class="changeable">
+												{{ formatNumber(device.overCurrentProtection) }}A
+												<v-btn size="x-small" color="green" variant="flat">set</v-btn>
+											</td>
+										</tr>
+										<tr>
+											<th>Over Power Protection</th>
+											<td @click="changeOPP" class="changeable">
+												{{ formatNumber(device.overPowerProtection) }}W
+												<v-btn size="x-small" color="green" variant="flat">set</v-btn>
+											</td>
+										</tr>
+										<tr>
+											<th>Over Temperature Protection</th>
+											<td @click="changeOTP" class="changeable">
+												{{ formatNumber(device.overTemperatureProtection) }}℃
+												<v-btn size="x-small" color="green" variant="flat">set</v-btn>
+											</td>
+										</tr>
+										<tr>
+											<th>Low Voltage Protection</th>
+											<td @click="changeLVP" class="changeable">
+												{{ formatNumber(device.lowVoltageProtection) }}V
+												<v-btn size="x-small" color="green" variant="flat">set</v-btn>
+											</td>
+										</tr>
+									</tbody>
+								</template>
+							</v-table>
+						</template>
+					</v-card>
+				</v-container>
+
+				<v-table v-if="false">
 					<template v-if="true">
 						<tbody>
-							<tr v-for="group in groups">
-								<td>{{ group.n }}</td>
-								<td>{{ formatNumber(group.setVoltage) }}V</td>
-								<td>{{ formatNumber(group.setCurrent) }}A</td>
-								<td>
-									<v-btn size="x-small" color="green" variant="flat" @click="setGroup(group)">set</v-btn>
-								</td>
+							<tr v-for="h in history">
+								<td>{{ formatDateTime(h.time) }}</td>
+								<td>{{ formatNumber(h.v) }}</td>
+								<td>{{ formatNumber(h.i) }}</td>
+								<td>{{ formatNumber(h.p) }}</td>
 							</tr>
 						</tbody>
 					</template>
 				</v-table>
-			</div>
 
-			<v-table>
-				<template v-if="true">
-					<tbody>
-						<tr>
-							<th>OVP</th>
-							<td @click="changeOVP">{{ formatNumber(device.overVoltageProtection) }}V</td>
-						</tr>
-						<tr>
-							<th>OCP</th>
-							<td>{{ formatNumber(device.overCurrentProtection) }}A</td>
-						</tr>
-						<tr>
-							<th>OPP</th>
-							<td>{{ formatNumber(device.overPowerProtection) }}W</td>
-						</tr>
-						<tr>
-							<th>OTP</th>
-							<td>{{ formatNumber(device.overTemperatureProtection) }}℃</td>
-						</tr>
-						<tr>
-							<th>LVP</th>
-							<td>{{ formatNumber(device.lowVoltageProtection) }}V</td>
-						</tr>
-					</tbody>
-				</template>
-			</v-table>
-
-			<v-table v-if="false">
-				<template v-if="true">
-					<tbody>
-						<tr v-for="h in history">
-							<td>{{ formatDateTime(h.time) }}</td>
-							<td>{{ formatNumber(h.v) }}</td>
-							<td>{{ formatNumber(h.i) }}</td>
-							<td>{{ formatNumber(h.p) }}</td>
-						</tr>
-					</tbody>
-				</template>
-			</v-table>
-
-			<v-btn @click="debug">Debug</v-btn>
+				<v-btn @click="debug">Debug</v-btn>
+			</v-app>
 
 			<v-dialog width="auto" v-model="showNumberInput" id="numberInput">
 				<v-card :title="numberInput.title" v-if="numberInput">

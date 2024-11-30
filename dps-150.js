@@ -36,6 +36,7 @@ export const OPP = 211;
 export const OTP = 212;
 export const LVP = 213;
 
+const METERING_ENABLE = 216;
 const OUTPUT_ENABLE = 219;
 
 // byte
@@ -66,7 +67,7 @@ export class DPS150 {
 	async start() {
 		console.log('start', this.port);
 		await this.port.open({
-			baudRate: 9600,
+			baudRate: 115200,
 			bufferSize: 1024,
 			dataBits: 8,
 			stopBits: 1,
@@ -120,6 +121,7 @@ export class DPS150 {
 							};
 							s6 %= 0x100;
 							if (s6 != c6) {
+								// console.log('checksum error', s6, c6, Array.from(c5).map(v => v.toString(16)).join(" "));
 								break;
 							}
 							// console.log('readData', c1, c2, c3, c4, Array.from(c5).map(v => v.toString(16)).join(" "), c6, '==', s6);
@@ -141,12 +143,12 @@ export class DPS150 {
 	async initCommand() {
 		await this.sendCommand(HEADER_OUTPUT, CMD_XXX_193, 0, 1); // CMD_1
 		// new int[5] { 9600, 19200, 38400, 57600, 115200 };
-		await this.sendCommand(HEADER_OUTPUT, CMD_XXX_176, 0, 1); // CMD_13 9600
+		await this.sendCommand(HEADER_OUTPUT, CMD_XXX_176, 0, [9600, 19200, 38400, 57600, 115200].indexOf(115200) + 1); // CMD_13
 
 		await this.sendCommand(HEADER_OUTPUT, CMD_GET, MODEL_NAME, 0); // get model name
 		await this.sendCommand(HEADER_OUTPUT, CMD_GET, HARDWARE_VERSION, 0); // get hardware version
 		await this.sendCommand(HEADER_OUTPUT, CMD_GET, FIRMWARE_VERSION, 0); // get firmware version
-		await this.sendCommand(HEADER_OUTPUT, CMD_GET, ALL, 0); // get all
+		await this.getAll();
 	}
 
 	async sendCommand(c1, c2, c3, c5) {
@@ -288,6 +290,7 @@ export class DPS150 {
 					const d30 = c5[107]; // output closed?
 					const d31 = c5[108]; // protection OVP=1, OCP=2, OPP=3, OTP=4, LVP=5
 					const d32 = c5[109]; // cc=0 or cv=1
+					const d33 = c5[110]; // ?
 
 					const d37 = view.getFloat32(111, true); // upper limit voltage
 					const d38 = view.getFloat32(115, true); // upper limit current
@@ -296,11 +299,17 @@ export class DPS150 {
 					const d41 = view.getFloat32(127, true);
 					const d42 = view.getFloat32(131, true);
 					const d43 = view.getFloat32(135, true);
+					/*
 					console.log({
 						d1, d2, d3, d4, d5, d6, d7, d8, d9, d10,
 						d11, d12, d13, d14, d15, d16, d17, d18, d19, d20,
 						d21, d22, d23, d24, d25, d26, d27, d28, d29, d30,
 						d31, d32, d37, d38, d39, d40, d41, d42, d43
+					});
+					*/
+					// dump unknwon data
+					console.log(c5.length, {
+						d33, d39, d40, d41, d42, d43
 					});
 
 					callback({
@@ -371,4 +380,11 @@ export class DPS150 {
 		await this.setByteValue(OUTPUT_ENABLE, 0);
 	}
 
+	async startMetering() {
+		await this.setByteValue(METERING_ENABLE, 1);
+	}
+
+	async stopMetering() {
+		await this.setByteValue(METERING_ENABLE, 0);
+	}
 }

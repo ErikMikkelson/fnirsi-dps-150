@@ -156,6 +156,9 @@ Vue.createApp({
 			});
 			navigator.serial.addEventListener('disconnect', (event) => {
 				console.log('disconnected', event.target);
+				if (event.target === this.port) {
+					this.port = null;
+				}
 			});
 			console.log(navigator.serial);
 			const ports = await navigator.serial.getPorts();
@@ -217,6 +220,16 @@ Vue.createApp({
 
 		disable: async function () {
 			await this.dps.disable();
+		},
+
+		startMetering: async function () {
+			await this.dps.startMetering();
+			await this.dps.getAll();
+		},
+
+		stopMetering: async function () {
+			await this.dps.stopMetering();
+			await this.dps.getAll();
 		},
 
 		changeVoltage: async function () {
@@ -289,6 +302,20 @@ Vue.createApp({
 			}
 		},
 
+		changeOTP: async function () {
+			const power = await this.openNumberInput({
+				title: "Over Temperature Protection",
+				description: ``,
+				units: ["", "", "", "℃"],
+				input: this.device.overTemperatureProtection,
+				unit: "℃",
+			});
+			if (power) {
+				await this.dps.setFloatValue(OTP, power);
+				await this.dps.getAll();
+			}
+		},
+
 		changeLVP: async function () {
 			const voltage = await this.openNumberInput({
 				title: "Low Voltage Protection",
@@ -313,7 +340,10 @@ Vue.createApp({
 
 		formatNumberForInput: function (number, sep) {
 			if (!sep) sep = ',';
-			return String(number).replace(/\B(?=(\d{3})+(?!\d))/g, sep);
+			if (typeof number === 'number') {
+				number = number.toFixed(3);
+			}
+			return number.replace(/\B(?=(\d{3})+(?!\d))/g, sep);
 		},
 
 		formatDateTime: function (date) {
@@ -372,6 +402,8 @@ Vue.createApp({
 				'A': 1,
 				'mW': 1e-3,
 				'W': 1,
+
+				'℃': 1,
 			};
 
 			console.log(JSON.stringify(char));
@@ -405,8 +437,20 @@ Vue.createApp({
 			console.log(this.numberInput.input, parseFloat(this.numberInput.input));
 		},
 
-		setGroup: function (group) {
+		setGroup: async function (group) {
 			console.log('set group', group);
+			const groupNumber = group.n;
+			const setVoltage = group.setVoltage;
+			const setCurrent = group.setCurrent;
+
+			const cmdVoltage = GROUP1_VOLTAGE_SET + (groupNumber - 1) * 2;
+			const cmdCurrent = GROUP1_CURRENT_SET + (groupNumber - 1) * 2;
+
+			await this.dps.setFloatValue(VOLTAGE_SET, setVoltage);
+			await this.dps.setFloatValue(CURRENT_SET, setCurrent);
+			await this.dps.setFloatValue(cmdVoltage, setVoltage);
+			await this.dps.setFloatValue(cmdCurrent, setCurrent);
+			await this.dps.getAll();
 		},
 
 		updateGraph: function () {
