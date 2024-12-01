@@ -130,6 +130,8 @@ Vue.createApp({
 				input: "",
 			},
 
+			tab: null,
+
 			connectOverlay: true,
 
 			program: "",
