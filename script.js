@@ -182,10 +182,10 @@ Vue.createApp({
 			I(1.0)
 			ON()
 			SLEEP(1000)
-			for (const _ of times(10)) {
+			times(10, () => {
 			  V(V() + 0.1)
 			  SLEEP(200)
-			}
+			})
 			OFF()
 		`.trim().replace(/\t+/g, '');
 
@@ -680,9 +680,9 @@ Vue.createApp({
 				SLEEP: (n) => {
 					queue.push({type: 'SLEEP', args: [n] });
 				},
-				times: function* (n) {
+				times: function (n, f) {
 					for (let i = 0; i < n; i++) {
-						yield i;
+						f(i);
 					}
 				}
 			};

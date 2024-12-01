@@ -162,10 +162,10 @@
 	<body>
 		<div id="app">
 			<v-app>
-				<v-toolbar density="default">
-					<v-toolbar-title>
+				<v-app-bar density="default">
+					<v-app-bar-title>
 						{{ device.modelName }} {{ device.firmwareVersion }} {{ device.hardwareVersion }}
-					</v-toolbar-title>
+					</v-app-bar-title>
 
 					<v-spacer></v-spacer>
 
@@ -204,223 +204,236 @@
 							</v-list-item>
 						</v-list>
 					</v-menu>
-				</v-toolbar>
+				</v-app-bar>
 
-				<div class="d-flex">
-					<div class="flex-fill" style="padding: 10px; height: 500px">
-						<div ref="graph" stlye=""></div>
-					</div>
+				<v-main>
+					<v-container>
+						<div class="d-flex">
+							<div class="flex-fill" style="padding: 10px; height: 500px">
+								<div ref="graph" stlye=""></div>
+							</div>
 
-					<div class="main-view" :class="{ enabled: device.outputClosed }" style="width: 300px">
-						<div class="changeable voltage" @click="changeVoltage">
-							<span>{{ formatNumber(device.outputVoltage) }}</span><span class="unit">V</span>
-							<div class="set">
-								vset <span>{{ formatNumber(device.setVoltage) }}</span><span class="unit">V</span>
+							<div class="main-view" :class="{ enabled: device.outputClosed }" style="width: 300px">
+								<div class="changeable voltage" @click="changeVoltage">
+									<span>{{ formatNumber(device.outputVoltage) }}</span><span class="unit">V</span>
+									<div class="set">
+										vset <span>{{ formatNumber(device.setVoltage) }}</span><span class="unit">V</span>
+									</div>
+								</div>
+								<div class="changeable current" @click="changeCurrent">
+									<span>{{ formatNumber(device.outputCurrent) }}</span><span class="unit">A</span>
+									<div class="set">
+										cset <span>{{ formatNumber(device.setCurrent) }}</span><span class="unit">A</span>
+									</div>
+								</div>
+								<div class="power">
+									<span>{{ formatNumber(device.outputPower) }}</span><span class="unit">W</span>
+								</div>
+								<v-chip :class="{ current: device.mode === 'CC', voltage: device.mode === 'CV' }" variant="flat" size="large">
+									{{ device.mode }}
+								</v-chip>
+								<v-chip :color="device.protectionState ? 'red' : 'green' " variant="flat" size="large">
+									{{ device.protectionState || "OK" }}
+								</v-chip>
 							</div>
 						</div>
-						<div class="changeable current" @click="changeCurrent">
-							<span>{{ formatNumber(device.outputCurrent) }}</span><span class="unit">A</span>
-							<div class="set">
-								cset <span>{{ formatNumber(device.setCurrent) }}</span><span class="unit">A</span>
-							</div>
-						</div>
-						<div class="power">
-							<span>{{ formatNumber(device.outputPower) }}</span><span class="unit">W</span>
-						</div>
-						<v-chip :class="{ current: device.mode === 'CC', voltage: device.mode === 'CV' }" variant="flat" size="large">
-							{{ device.mode }}
-						</v-chip>
-						<v-chip :color="device.protectionState ? 'red' : 'green' " variant="flat" size="large">
-							{{ device.protectionState || "OK" }}
-						</v-chip>
-					</div>
-				</div>
 
-				<!-- div>
-					<p>
-						brightness: {{ device.brightness }}
-						volume: {{ device.volume }}
-					</p>
-				</div -->
+						<!-- div>
+							<p>
+								brightness: {{ device.brightness }}
+								volume: {{ device.volume }}
+							</p>
+						</div -->
 
-				<v-container class="d-flex flex-wrap">
-					<v-card :title="`Metering ${ device.meteringClosed ? 'OFF' : 'ON' }`">
-						<v-btn @click="startMetering" v-if="device.meteringClosed">Start</v-btn>
-						<v-btn @click="stopMetering" v-else>Stop</v-btn>
-						<v-table density="compact" style="max-width: 30em">
-							<template v-if="true">
-								<tbody>
-									<tr>
-										<td>Output Capacity</td>
-										<td>
-											<span v-if="device.outputCapacity < 1">
-												{{ formatNumber(device.outputCapacity * 1000) }}mWh
-											</span>
-											<span v-else>
-												{{ formatNumber(device.outputCapacity) }}Wh
-											</span>
-										</td>
-									</tr>
-									<tr>
-										<td>Output Energy</td>
-										<td>
-											<span v-if="device.outputEnergy < 1">
-												{{ formatNumber(device.outputEnergy * 1000) }}mWh
-											</span>
-											<span v-else>
-												{{ formatNumber(device.outputEnergy) }}Wh
-											</span>
-										</td>
-									</tr>
-								</tbody>
-							</template>
-						</v-table>
-					</v-card>
-					<v-card title="Memory Groups">
-						<template v-slot:text>
-							<v-table density="compact" style="max-width: 30em" class="groups">
-								<template v-if="true">
-									<tbody>
-										<tr v-for="group in groups">
-											<td>
-												<v-btn size="x-small" :color="groupChanged(group) ? 'red' : 'green'" variant="flat" @click="setGroup(group)">
-													M{{ group.n }}
-													<v-tooltip activator="parent" location="start">
-														{{ groupChanged(group) ? 'Update with changed values' : `Set M${group.n}` }}
-													</v-tooltip>
-												</v-btn>
-											</td>
-											<td @click="editGroupVoltage(group)" class="changeable" :class="{ changed: groupChanged(group, 'V') }">
-												{{ formatNumber(groupsInput[group.n].setVoltage || group.setVoltage) }}V
-												<v-btn size="x-small" color="green" variant="flat">set</v-btn>
-											</td>
-											<td @click="editGroupCurrent(group)" class="changeable" :class="{ changed: groupChanged(group, 'I') }">
-												{{ formatNumber(groupsInput[group.n].setCurrent || group.setCurrent) }}A
-												<v-btn size="x-small" color="green" variant="flat">set</v-btn>
-											</td>
-										</tr>
-									</tbody>
-								</template>
-							</v-table>
-						</template>
-					</v-card>
-
-					<v-card title="Protections">
-						<template v-slot:text>
-							<v-table density="compact" style="max-width: 30em">
-								<template v-if="true">
-									<tbody>
-										<tr>
-											<th>Over Voltage Protection</th>
-											<td @click="changeOVP" class="changeable">
-												{{ formatNumber(device.overVoltageProtection) }}V
-												<v-btn size="x-small" color="green" variant="flat">set</v-btn>
-											</td>
-										</tr>
-										<tr>
-											<th>Over Current Protection</th>
-											<td @click="changeOCP" class="changeable">
-												{{ formatNumber(device.overCurrentProtection) }}A
-												<v-btn size="x-small" color="green" variant="flat">set</v-btn>
-											</td>
-										</tr>
-										<tr>
-											<th>Over Power Protection</th>
-											<td @click="changeOPP" class="changeable">
-												{{ formatNumber(device.overPowerProtection) }}W
-												<v-btn size="x-small" color="green" variant="flat">set</v-btn>
-											</td>
-										</tr>
-										<tr>
-											<th>Over Temperature Protection</th>
-											<td @click="changeOTP" class="changeable">
-												{{ formatNumber(device.overTemperatureProtection) }}℃
-												<v-btn size="x-small" color="green" variant="flat">set</v-btn>
-											</td>
-										</tr>
-										<tr>
-											<th>Low Voltage Protection</th>
-											<td @click="changeLVP" class="changeable">
-												{{ formatNumber(device.lowVoltageProtection) }}V
-												<v-btn size="x-small" color="green" variant="flat">set</v-btn>
-											</td>
-										</tr>
-									</tbody>
-								</template>
-							</v-table>
-						</template>
-					</v-card>
-
-					<v-card title="Program" style="">
-						<template v-slot:text>
-							<div class="d-flex">
-								<v-textarea class="flex-fill" v-model="program" prepend-icon="mdi-code-block-parentheses"
-									style="width: 20em"
-									rows="10"
-									auto-grow
-									></v-textarea>
-								<v-table density="compact" style="width: 30em">
+						<v-container class="d-flex flex-wrap">
+							<v-card :title="`Metering ${ device.meteringClosed ? 'OFF' : 'ON' }`">
+								<v-btn @click="startMetering" v-if="device.meteringClosed">Start</v-btn>
+								<v-btn @click="stopMetering" v-else>Stop</v-btn>
+								<v-table density="compact" style="max-width: 30em">
 									<template v-if="true">
 										<tbody>
 											<tr>
-												<th>V(v)</th>
-												<td>Set voltage to `v`</td>
+												<td>Output Capacity</td>
+												<td>
+													<span v-if="device.outputCapacity < 1">
+														{{ formatNumber(device.outputCapacity * 1000) }}mWh
+													</span>
+													<span v-else>
+														{{ formatNumber(device.outputCapacity) }}Wh
+													</span>
+												</td>
 											</tr>
 											<tr>
-												<th>V()</th>
-												<td>Get current set voltage</td>
-											</tr>
-											<tr>
-												<th>I(i)</th>
-												<td>Set current to `i`</td>
-											</tr>
-											<tr>
-												<th>I()</th>
-												<td>Get current set current</td>
-											</tr>
-											<tr>
-												<th>ON()</th>
-												<td>Enable output</td>
-											</tr>
-											<tr>
-												<th>OFF()</th>
-												<td>Disable output</td>
-											</tr>
-											<tr>
-												<th>SLEEP(ms)</th>
-												<td>Sleep `ms`</td>
-											</tr>
-											<tr>
-												<th>times(n)</th>
-												<td>Utility loop function</td>
+												<td>Output Energy</td>
+												<td>
+													<span v-if="device.outputEnergy < 1">
+														{{ formatNumber(device.outputEnergy * 1000) }}mWh
+													</span>
+													<span v-else>
+														{{ formatNumber(device.outputEnergy) }}Wh
+													</span>
+												</td>
 											</tr>
 										</tbody>
 									</template>
 								</v-table>
-							</div>
-							<v-btn color="green" @click="runProgram" v-if="!evalAbortController">Run</v-btn>
-							<v-btn color="red" @click="evalAbortController.abort()" v-else>Abort ({{ programRemaining }} remains)</v-btn>
-							<p class="note">
-								The program is executed once and for all. It then builds a command queue. The actual output control is then performed according to the command queue.
-							</p>
-						</template>
-					</v-card>
-				</v-container>
+							</v-card>
+							<v-card title="Memory Groups">
+								<template v-slot:text>
+									<v-table density="compact" style="max-width: 30em" class="groups">
+										<template v-if="true">
+											<tbody>
+												<tr v-for="group in groups">
+													<td>
+														<v-btn size="x-small" :color="groupChanged(group) ? 'red' : 'green'" variant="flat" @click="setGroup(group)">
+															M{{ group.n }}
+															<v-tooltip activator="parent" location="start">
+																{{ groupChanged(group) ? 'Update with changed values' : `Set M${group.n}` }}
+															</v-tooltip>
+														</v-btn>
+													</td>
+													<td @click="editGroupVoltage(group)" class="changeable" :class="{ changed: groupChanged(group, 'V') }">
+														{{ formatNumber(groupsInput[group.n].setVoltage || group.setVoltage) }}V
+														<v-btn size="x-small" color="green" variant="flat">set</v-btn>
+													</td>
+													<td @click="editGroupCurrent(group)" class="changeable" :class="{ changed: groupChanged(group, 'I') }">
+														{{ formatNumber(groupsInput[group.n].setCurrent || group.setCurrent) }}A
+														<v-btn size="x-small" color="green" variant="flat">set</v-btn>
+													</td>
+												</tr>
+											</tbody>
+										</template>
+									</v-table>
+								</template>
+							</v-card>
 
-				<v-table v-if="false">
-					<template v-if="true">
-						<tbody>
-							<tr v-for="h in history">
-								<td>{{ formatDateTime(h.time) }}</td>
-								<td>{{ formatNumber(h.v) }}</td>
-								<td>{{ formatNumber(h.i) }}</td>
-								<td>{{ formatNumber(h.p) }}</td>
-							</tr>
-						</tbody>
-					</template>
-				</v-table>
+							<v-card title="Protections">
+								<template v-slot:text>
+									<v-table density="compact" style="max-width: 30em">
+										<template v-if="true">
+											<tbody>
+												<tr>
+													<th>Over Voltage Protection</th>
+													<td @click="changeOVP" class="changeable">
+														{{ formatNumber(device.overVoltageProtection) }}V
+														<v-btn size="x-small" color="green" variant="flat">set</v-btn>
+													</td>
+												</tr>
+												<tr>
+													<th>Over Current Protection</th>
+													<td @click="changeOCP" class="changeable">
+														{{ formatNumber(device.overCurrentProtection) }}A
+														<v-btn size="x-small" color="green" variant="flat">set</v-btn>
+													</td>
+												</tr>
+												<tr>
+													<th>Over Power Protection</th>
+													<td @click="changeOPP" class="changeable">
+														{{ formatNumber(device.overPowerProtection) }}W
+														<v-btn size="x-small" color="green" variant="flat">set</v-btn>
+													</td>
+												</tr>
+												<tr>
+													<th>Over Temperature Protection</th>
+													<td @click="changeOTP" class="changeable">
+														{{ formatNumber(device.overTemperatureProtection) }}℃
+														<v-btn size="x-small" color="green" variant="flat">set</v-btn>
+													</td>
+												</tr>
+												<tr>
+													<th>Low Voltage Protection</th>
+													<td @click="changeLVP" class="changeable">
+														{{ formatNumber(device.lowVoltageProtection) }}V
+														<v-btn size="x-small" color="green" variant="flat">set</v-btn>
+													</td>
+												</tr>
+											</tbody>
+										</template>
+									</v-table>
+								</template>
+							</v-card>
 
-				<v-btn @click="debug">Debug</v-btn>
+							<v-card title="Program" style="">
+								<template v-slot:text>
+									<div class="d-flex">
+										<v-textarea class="flex-fill" v-model="program" prepend-icon="mdi-code-block-parentheses"
+											style="width: 20em"
+											rows="10"
+											auto-grow
+											></v-textarea>
+										<v-table density="compact" style="width: 30em">
+											<template v-if="true">
+												<tbody>
+													<tr>
+														<th>V(v)</th>
+														<td>Set voltage to `v`</td>
+													</tr>
+													<tr>
+														<th>V()</th>
+														<td>Get current set voltage</td>
+													</tr>
+													<tr>
+														<th>I(i)</th>
+														<td>Set current to `i`</td>
+													</tr>
+													<tr>
+														<th>I()</th>
+														<td>Get current set current</td>
+													</tr>
+													<tr>
+														<th>ON()</th>
+														<td>Enable output</td>
+													</tr>
+													<tr>
+														<th>OFF()</th>
+														<td>Disable output</td>
+													</tr>
+													<tr>
+														<th>SLEEP(ms)</th>
+														<td>Sleep `ms`</td>
+													</tr>
+													<tr>
+														<th>times(n, f)</th>
+														<td>Run `f` for `n` times</td>
+													</tr>
+												</tbody>
+											</template>
+										</v-table>
+									</div>
+									<v-btn color="green" @click="runProgram" v-if="!evalAbortController">Run</v-btn>
+									<v-btn color="red" @click="evalAbortController.abort()" v-else>Abort ({{ programRemaining }} remains)</v-btn>
+									<p class="note">
+										The program is executed once and for all. It then builds a command queue. The actual output control is then performed according to the command queue.
+									</p>
+								</template>
+							</v-card>
+						</v-container>
+
+						<v-table v-if="false">
+							<template v-if="true">
+								<tbody>
+									<tr v-for="h in history">
+										<td>{{ formatDateTime(h.time) }}</td>
+										<td>{{ formatNumber(h.v) }}</td>
+										<td>{{ formatNumber(h.i) }}</td>
+										<td>{{ formatNumber(h.p) }}</td>
+									</tr>
+								</tbody>
+							</template>
+						</v-table>
+
+						<v-btn @click="debug">Debug</v-btn>
+					</v-container>
+				</v-main>
+
+				<v-overlay v-model="connectOverlay" class="justify-center" style="position: fixed" contained>
+					<div style="text-align: center; padding: 5em">
+						<p>Device is not connected</p>
+						<p>
+							<v-btn @click="connect" v-if="!port">Connect</v-btn>
+						</p>
+					</div>
+				</v-overlay>
 			</v-app>
 
 			<v-dialog width="auto" v-model="showNumberInput" id="numberInput">
@@ -478,15 +491,6 @@
 					</template>
 				</v-card>
 			</v-dialog>
-
-			<v-overlay v-model="connectOverlay" class="align-center justify-center" contained>
-				<div style="text-align: center">
-					<p>Device is not connected</p>
-					<p>
-						<v-btn @click="connect" v-if="!port">Connect</v-btn>
-					</p>
-				</div>
-			</v-overlay>
 		</div>
 	</body>
 </html>
