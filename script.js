@@ -145,6 +145,12 @@ Vue.createApp({
 				}
 			},
 
+			graphOptions: {
+				voltage: true,
+				current: true,
+				power: true,
+			},
+
 			showNumberInput: false,
 			numberInput: {
 				result: "",
@@ -189,6 +195,13 @@ Vue.createApp({
 			} else {
 				this.connectOverlay = false;
 			}
+		},
+
+		graphOptions: {
+			handler: function () {
+				this.updateGraph();
+			},
+			deep: true,
 		},
 	},
 
@@ -584,52 +597,61 @@ Vue.createApp({
 		},
 
 		updateGraph: function () {
-			const data = [
-				{ 
-					mode: "lines+markers",
-					x: [],
-					y: [],
-					name: "Voltage",
-					line: {
-						width: 3,
-						color: '#38a410',
-						shape: 'linear',
-					},
+			const voltage = { 
+				mode: "lines+markers",
+				x: [],
+				y: [],
+				name: "Voltage",
+				line: {
+					width: 3,
+					color: '#38a410',
+					shape: 'linear',
 				},
-				{
-					mode: "lines+markers",
-					x: [],
-					y: [],
-					name: "Current",
-					yaxis: "y2",
-					line: {
-						width: 3,
-						color: '#e84944',
-						shape: 'linear',
-					},
+			};
+			const current = {
+				mode: "lines+markers",
+				x: [],
+				y: [],
+				name: "Current",
+				yaxis: "y2",
+				line: {
+					width: 3,
+					color: '#e84944',
+					shape: 'linear',
 				},
-				{ 
-					mode: "lines+markers",
-					x: [],
-					y: [],
-					name: "Power",
-					yaxis: "y3",
-					line: {
-						width: 3,
-						color: '#0097d2',
-						shape: 'linear',
-					},
+			};
+			const power = {
+				mode: "lines+markers",
+				x: [],
+				y: [],
+				name: "Power",
+				yaxis: "y3",
+				line: {
+					width: 3,
+					color: '#0097d2',
+					shape: 'linear',
 				},
+			};
 
-			];
 
 			for (let h of this.history) {
-				data[0].x.push(h.time);
-				data[0].y.push(h.v);
-				data[1].x.push(h.time);
-				data[1].y.push(h.i);
-				data[2].x.push(h.time);
-				data[2].y.push(h.p);
+				voltage.x.push(h.time);
+				voltage.y.push(h.v);
+				current.x.push(h.time);
+				current.y.push(h.i);
+				power.x.push(h.time);
+				power.y.push(h.p);
+			}
+
+			const data = [];
+			if (this.graphOptions.voltage) {
+				data.push(voltage);
+			}
+			if (this.graphOptions.current) {
+				data.push(current);
+			}
+			if (this.graphOptions.power) {
+				data.push(power);
 			}
 
 			const layout = {
@@ -651,6 +673,7 @@ Vue.createApp({
 					// autorange: true,
 					type: 'date',
 					range: [new Date() - 1000 * 60 * 1, new Date()],// todo
+					tickformat: '%M:%S\n %H'
 					/*
 					rangeselector: {
 						buttons: [
