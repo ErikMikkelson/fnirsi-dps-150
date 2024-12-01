@@ -91,6 +91,32 @@ Vue.createApp({
 					p: 0,
 				}
 			],
+			historyTableHeaders: [
+				{
+					title: 'Time',
+					align: 'start',
+					sortable: true,
+					key: 'time',
+				},
+				{
+					title: 'Voltage',
+					key: 'v',
+					sortable: false,
+					align: 'end',
+				},
+				{
+					title: 'Current',
+					key: 'i',
+					sortable: false,
+					align: 'end',
+				},
+				{
+					title: 'Power',
+					key: 'p',
+					sortable: false,
+					align: 'end',
+				},
+			],
 
 			groupsInput: {
 				1: {
@@ -180,13 +206,14 @@ Vue.createApp({
 //		});
 
 		this.program = `
-			V(9.0)
+			V(10.0)
 			I(1.0)
 			ON()
 			SLEEP(1000)
-			times(10, () => {
-			  V(V() + 0.1)
-			  SLEEP(200)
+			times(1000, (i) => {
+			  // V(V() + 0.1)
+			  V(Math.sin(i / 20) * 2 + 10)
+			  SLEEP(50)
 			})
 			OFF()
 		`.trim().replace(/\t+/g, '');
@@ -232,14 +259,28 @@ Vue.createApp({
 			this.port = port;
 			this.dps = new DPS150(this.port, (data) => {
 				Object.assign(this.device, data);
-				if (data.outputVoltage) {
-					this.history.push({
+				if (typeof data.outputVoltage === 'number') {
+					if (this.history.length >= 2 &&
+						data.outputVoltage === 0 &&
+						data.outputCurrent === 0 &&
+						data.outputPower   === 0 &&
+						this.history[0].v  === 0 &&
+						this.history[0].i  === 0 &&
+						this.history[0].p  === 0 &&
+						this.history[1].v  === 0 &&
+						this.history[1].i  === 0 &&
+						this.history[1].p  === 0
+					) {
+						this.history[0].time = new Date();
+						return;
+					}
+					this.history.unshift({
 						time: new Date(),
 						v: data.outputVoltage,
 						i: data.outputCurrent,
 						p: data.outputPower,
 					});
-					this.history = this.history.slice(-100);
+					this.history = this.history.slice(0, 10000);
 				}
 			});
 			window.APP = this;
@@ -545,17 +586,18 @@ Vue.createApp({
 		updateGraph: function () {
 			const data = [
 				{ 
-					mode: "scatter",
+					mode: "lines+markers",
 					x: [],
 					y: [],
 					name: "Voltage",
 					line: {
 						width: 3,
 						color: '#38a410',
+						shape: 'linear',
 					},
 				},
 				{
-					mode: "scatter",
+					mode: "lines+markers",
 					x: [],
 					y: [],
 					name: "Current",
@@ -563,10 +605,11 @@ Vue.createApp({
 					line: {
 						width: 3,
 						color: '#e84944',
+						shape: 'linear',
 					},
 				},
 				{ 
-					mode: "scatter",
+					mode: "lines+markers",
 					x: [],
 					y: [],
 					name: "Power",
@@ -574,6 +617,7 @@ Vue.createApp({
 					line: {
 						width: 3,
 						color: '#0097d2',
+						shape: 'linear',
 					},
 				},
 
@@ -604,7 +648,42 @@ Vue.createApp({
 					},
 					*/
 					domain: [0.1, 0.9],
-					autorange: true,
+					// autorange: true,
+					type: 'date',
+					range: [new Date() - 1000 * 60 * 1, new Date()],// todo
+					/*
+					rangeselector: {
+						buttons: [
+							{
+								count: 1,
+								label: '1m',
+								step: 'minute',
+								stepmode: 'backward'
+							},
+							{
+								count: 3,
+								label: '3m',
+								step: 'minute',
+								stepmode: 'backward'
+							},
+							{
+								count: 5,
+								label: '5m',
+								step: 'minute',
+								stepmode: 'backward'
+							},
+							{
+								count: 10,
+								label: '10m',
+								step: 'minute',
+								stepmode: 'backward'
+							},
+							{
+								step: 'all'
+							}
+						]
+					}
+					*/
 				},
 				yaxis: {
 					title: {
@@ -716,20 +795,38 @@ Vue.createApp({
 				if (cmd.type === 'SLEEP') {
 					await sleep(cmd.args[0]);
 				}
-				await this.dps.getAll();
+				// await this.dps.getAll();
 				if (signal.aborted) {
 					console.log('canceled');
 					this.dps.disable();
 					break;
 				}
 			}
+			await sleep(500);
+			await this.dps.getAll();
 
 			this.evalAbortController = null;
 		},
 
 		runProgram: function () {
 			this.evaluateDSL(this.program);
-		}
+		},
+
+		resetHistory: function () {
+			this.history = [];
+		},
+
+		downloadHistory: function () {
+			const csv = this.history.map((h) => 
+				[ h.time.toISOString(), h.v, h.i, h.p ].join('\t')
+			);
+			const blob = new Blob([csv.join('\n')], {type: 'text/tab-separated-values'});
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = 'history.csv';
+			a.click();
+		},
 	}
 }).use(Vuetify.createVuetify({
 	theme: {

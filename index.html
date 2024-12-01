@@ -118,7 +118,6 @@
 			}
 
 			.v-card {
-				margin: 10px;
 			}
 
 			.changeable {
@@ -251,6 +250,7 @@
 								<v-tab value="metering">Metering</v-tab>
 								<v-tab value="protections">Protections</v-tab>
 								<v-tab value="program">Program</v-tab>
+								<v-tab value="history">History</v-tab>
 								<v-tab value="settings">Settings</v-tab>
 							</v-tabs>
 
@@ -413,6 +413,47 @@
 										<v-btn color="green" @click="runProgram" v-if="!evalAbortController">Run</v-btn>
 										<v-btn color="red" @click="evalAbortController.abort()" v-else>Abort ({{ programRemaining }} remains)</v-btn>
 									</v-tabs-window-item>
+									<v-tabs-window-item value="history">
+										<v-row>
+											<v-col>
+												<v-btn @click="downloadHistory" :disabled="!history.length" prepend-icon="mdi-download-box">Download</v-btn>
+											</v-col>
+											<v-col style="text-align: right">
+												<v-btn @click="resetHistory" :disabled="!history.length" prepend-icon="mdi-close-box">Reset</v-btn>
+											</v-col>
+										</v-row>
+										<v-data-table
+											density="compact"
+											:headers="historyTableHeaders"
+											:items="history"
+											:items-per-page="10"
+											>
+											<template v-slot:item.time="{ item }">
+												{{ formatDateTime(item.time) }}
+											</template>
+											<template v-slot:item.v="{ item }">
+												{{ formatNumber(item.v) }}V
+											</template>
+											<template v-slot:item.i="{ item }">
+												{{ formatNumber(item.i) }}A
+											</template>
+											<template v-slot:item.p="{ item }">
+												{{ formatNumber(item.p) }}W
+											</template>
+										</v-data-table>
+										<!-- v-table>
+											<template v-if="true">
+												<tbody>
+													<tr v-for="h in history">
+														<td>{{ formatDateTime(h.time) }}</td>
+														<td>{{ formatNumber(h.v) }}</td>
+														<td>{{ formatNumber(h.i) }}</td>
+														<td>{{ formatNumber(h.p) }}</td>
+													</tr>
+												</tbody>
+											</template>
+										</v-table -->
+									</v-tabs-window-item>
 									<v-tabs-window-item value="settings">
 										<v-table density="compact" style="width: 30em">
 											<template v-if="true">
@@ -433,21 +474,6 @@
 							</v-card-text>
 						</v-card>
 
-
-						<v-table v-if="false">
-							<template v-if="true">
-								<tbody>
-									<tr v-for="h in history">
-										<td>{{ formatDateTime(h.time) }}</td>
-										<td>{{ formatNumber(h.v) }}</td>
-										<td>{{ formatNumber(h.i) }}</td>
-										<td>{{ formatNumber(h.p) }}</td>
-									</tr>
-								</tbody>
-							</template>
-						</v-table>
-
-						<v-btn @click="debug">Debug</v-btn>
 					</v-container>
 				</v-main>
 
