@@ -1,4 +1,5 @@
 import { sprintf } from 'https://cdn.jsdelivr.net/npm/sprintf-js@1.1.3/+esm'
+import * as Comlink from "https://unpkg.com/comlink/dist/esm/comlink.mjs";
 
 import {
 	DPS150,
@@ -27,6 +28,8 @@ import {
 	LVP,
 	OPP,
 } from "./dps-150.js";
+
+const Backend = Comlink.wrap(new Worker("worker.js", { type : "module" }));
 
 async function sleep(n) {
 	return new Promise((resolve) => {
@@ -198,13 +201,13 @@ Vue.createApp({
 				input: "",
 			},
 
-			tab: "program",
+			tab: null,
 
 			connectOverlay: true,
 
 			program: "",
+			programRunning: false,
 			programRemaining: 0,
-			evalAbortController: null,
 			programExamples: [
 				{
 					name: "Sweep Voltage",
@@ -243,12 +246,13 @@ Vue.createApp({
 				{
 					name: "Sine Wave",
 					code: `
-						V(10.0)
-						I(1.0)
+						const CENTER = 10;
+						const RIPPLE = 2;
+						V(CENTER)
 						ON()
 						SLEEP(1000)
 						times(1000, (i) => {
-						  V(Math.sin(i / 20) * 2 + 10)
+						  V(Math.sin(i / 20) * RIPPLE + CENTER)
 						  SLEEP(50)
 						})
 						OFF()
@@ -312,24 +316,21 @@ Vue.createApp({
 
 		this.updateGraph();
 
+		/*
 		window.addEventListener("beforeunload", (event) => {
 			event.preventDefault();
 			event.returnValue = "";
 		});
+		*/
 	},
 
 	methods :{
 		init: async function () {
-			navigator.serial.addEventListener('connect', (event) => {
-				console.log('connected', event.target);
-			});
-			navigator.serial.addEventListener('disconnect', (event) => {
-				console.log('disconnected', event.target);
-				if (event.target === this.port) {
-					this.port = null;
-				}
-			});
 			console.log(navigator.serial);
+			if (!navigator.serial) {
+				return;
+			}
+			this.dps = await new Backend();
 			const ports = await navigator.serial.getPorts();
 			if (ports.length) {
 				this.start(ports[0]);
@@ -338,23 +339,34 @@ Vue.createApp({
 
 		connect: async function () {
 			console.log('connect');
+			// vid:0x2e3c pid: 0x5740
 			this.start(await navigator.serial.requestPort());
 		},
 
 		disconnect: async function () {
 			if (this.port) {
-				await this.dps.stop();
-				await this.port.forget();
+				await this.dps.stopSerialPort();
 				this.port = null;
 				console.log('forgot');
 			}
 		},
 
 		start: async function (port) {
-			console.log(port, port.getInfo());
 			if (!port) return;
+			console.log(port, port.getInfo());
+
+			const portInfo = port.getInfo();
+
 			this.port = port;
-			this.dps = new DPS150(this.port, (data) => {
+			await this.dps.startSerialPort({
+				usbVendorId: portInfo.usbVendorId,
+				usbProductId: portInfo.usbProductId,
+			}, Comlink.proxy((data) => {
+				if (!data) {
+					// disconnected
+					this.port = null;
+					return;
+				}
 				Object.assign(this.device, data);
 				if (typeof data.outputVoltage === 'number') {
 					if (this.history.length >= 2 &&
@@ -379,14 +391,9 @@ Vue.createApp({
 					});
 					this.history = this.history.slice(0, 10000);
 				}
-			});
+			}));
+
 			window.APP = this;
-			try {
-				await this.dps.start();
-			} catch (e) {
-				this.port = null;
-				alert(e);
-			}
 		},
 
 		debug: async function () {
@@ -532,6 +539,18 @@ Vue.createApp({
 
 		formatDateTime: function (date) {
 			return date.toISOString();
+		},
+
+		formatProtectionState: function (state) {
+			return {
+				"": "Normal",
+				"OVP": "Over Voltage Protection",
+				"OCP": "Over Current Protection",
+				"OPP": "Over Power Protection",
+				"OTP": "Over Temperature Protection",
+				"LVP": "Low Voltage Protection",
+				"REP": "Reverse Connection Protection",
+			}[state];
 		},
 
 		openNumberInput: async function (opts) {
@@ -750,13 +769,15 @@ Vue.createApp({
 			};
 
 
-			for (let h of this.history) {
+			for (let i = 0; i < this.history.length; i++) {
+				const h = this.history[i];
 				voltage.x.push(h.time);
 				voltage.y.push(h.v);
 				current.x.push(h.time);
 				current.y.push(h.i);
 				power.x.push(h.time);
 				power.y.push(h.p);
+				if (i > 60) break;
 			}
 
 			const data = [];
@@ -924,43 +945,22 @@ Vue.createApp({
 				return;
 			}
 
-			this.evalAbortController = new AbortController();
-			const signal = this.evalAbortController.signal;
 
-			console.log(queue);
-			while (queue.length > 0) {
-				this.programRemaining = queue.length;
-				const cmd = queue.shift();
-				if (cmd.type === 'V') {
-					await this.dps.setFloatValue(VOLTAGE_SET, cmd.args[0]);
-				} else
-				if (cmd.type === 'I') {
-					await this.dps.setFloatValue(CURRENT_SET, cmd.args[0]);
-				} else
-				if (cmd.type === 'ON') {
-					await this.dps.enable();
-				} else
-				if (cmd.type === 'OFF') {
-					await this.dps.disable();
-				} else
-				if (cmd.type === 'SLEEP') {
-					await sleep(cmd.args[0]);
-				}
-				// await this.dps.getAll();
-				if (signal.aborted) {
-					console.log('canceled');
-					this.dps.disable();
-					break;
-				}
-			}
-			await sleep(500);
-			await this.dps.getAll();
-
-			this.evalAbortController = null;
+			this.programRunning = true;
+			this.programRemaining = queue.length;
+			console.log('executeCommands');
+			await this.dps.executeCommands(queue, Comlink.proxy((n) => {
+				this.programRemaining = n;
+			}));
+			this.programRunning = false;
 		},
 
 		runProgram: function () {
 			this.evaluateDSL(this.program);
+		},
+
+		abortProgram: function () {
+			this.dps.abortExecuteCommands();
 		},
 
 		resetHistory: function () {

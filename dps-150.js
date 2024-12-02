@@ -55,6 +55,7 @@ const PROTECTION_STATES = [
 	"OPP",
 	"OTP",
 	"LVP",
+	"REP",
 ];
 
 export class DPS150 {
@@ -310,7 +311,7 @@ export class DPS150 {
 					*/
 					// dump unknwon data
 					console.log(c5.length, {
-						d33, d39, d40, d41, d42, d43
+						d31, d33, d39, d40, d41, d42, d43
 					});
 
 					callback({

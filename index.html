@@ -228,19 +228,19 @@
 
 							<div class="main-view" :class="{ enabled: device.outputClosed }" style="width: 300px">
 								<div class="changeable voltage" @click="changeVoltage">
-									<span>{{ formatNumber(device.outputVoltage) }}</span><span class="unit">V</span>
+									<span>{{ port ? formatNumber(device.outputVoltage) : "-" }}</span><span class="unit">V</span>
 									<div class="set">
 										vset <span>{{ formatNumber(device.setVoltage) }}</span><span class="unit">V</span>
 									</div>
 								</div>
 								<div class="changeable current" @click="changeCurrent">
-									<span>{{ formatNumber(device.outputCurrent) }}</span><span class="unit">A</span>
+									<span>{{ port ? formatNumber(device.outputCurrent) : "-" }}</span><span class="unit">A</span>
 									<div class="set">
 										cset <span>{{ formatNumber(device.setCurrent) }}</span><span class="unit">A</span>
 									</div>
 								</div>
 								<div class="power">
-									<span>{{ formatNumber(device.outputPower) }}</span><span class="unit">W</span>
+									<span>{{ port ? formatNumber(device.outputPower) : "-" }}</span><span class="unit">W</span>
 								</div>
 								<v-chip :class="{ current: device.mode === 'CC', voltage: device.mode === 'CV' }" variant="flat" size="large">
 									{{ device.mode }}
@@ -250,6 +250,9 @@
 								</v-chip>
 								<v-chip :color="device.protectionState ? 'red' : 'green' " variant="flat" size="large">
 									{{ device.protectionState || "OK" }}
+									<v-tooltip activator="parent" location="start">
+										{{ formatProtectionState(device.protectionState) }}
+									</v-tooltip>
 								</v-chip>
 							</div>
 						</div>
@@ -432,8 +435,8 @@
 												</v-card>
 											</div>
 										</div>
-										<v-btn color="green" @click="runProgram" v-if="!evalAbortController">Run</v-btn>
-										<v-btn color="red" @click="evalAbortController.abort()" v-else>Abort ({{ programRemaining }} remains)</v-btn>
+										<v-btn color="green" @click="runProgram" v-if="!programRunning">Run</v-btn>
+										<v-btn color="red" @click="abortProgram" v-else>Abort ({{ programRemaining }} remains)</v-btn>
 									</v-tabs-window-item>
 									<v-tabs-window-item value="history">
 										<v-row>
