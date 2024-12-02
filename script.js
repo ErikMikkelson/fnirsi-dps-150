@@ -18,6 +18,9 @@ import {
 	GROUP6_VOLTAGE_SET,
 	GROUP6_CURRENT_SET,
 
+	BRIGHTNESS,
+	VOLUME,
+
 	OVP,
 	OCP,
 	OTP,
@@ -29,6 +32,38 @@ async function sleep(n) {
 	return new Promise((resolve) => {
 		setTimeout(resolve, n);
 	});
+}
+
+function functionWithTimeout(fn, timeout) {
+	const workerCode = `
+		self.onmessage = (event) => {
+		 postMessage( (${fn.toString()}).apply(null, event.data) );
+		};
+	`;
+
+	return async function (...args) {
+		return await new Promise((resolve, reject) => {
+			const worker = new Worker(URL.createObjectURL(new Blob([workerCode], { type: "application/javascript" })), {
+				type: 'module',
+				name: 'evaluator',
+			});
+			const timer = setTimeout(() => {
+				clearTimeout(timer);
+				worker.terminate();
+				reject(new Error('timeout'));
+			}, timeout);
+			worker.addEventListener('message', (event) => {
+				clearTimeout(timer);
+				resolve(event.data);
+			});
+			worker.addEventListener('error', (event) => {
+				console.log('error', event);
+				clearTimeout(timer);
+				reject(event);
+			});
+			worker.postMessage(args);
+		});
+	};
 }
 
 Vue.createApp({
@@ -149,6 +184,7 @@ Vue.createApp({
 				voltage: true,
 				current: true,
 				power: true,
+				duration: 30,
 			},
 
 			showNumberInput: false,
@@ -162,13 +198,63 @@ Vue.createApp({
 				input: "",
 			},
 
-			tab: null,
+			tab: "program",
 
 			connectOverlay: true,
 
 			program: "",
 			programRemaining: 0,
 			evalAbortController: null,
+			programExamples: [
+				{
+					name: "Sweep Voltage",
+					code: `
+						const START = 1;
+						const END   = 10;
+						const STEP  = 0.1;
+						V(START)
+						ON()
+						SLEEP(1000)
+						while (V() + STEP < END) {
+						  V(V() + STEP)
+						  SLEEP(100)
+						}
+						SLEEP(1000)
+						OFF()
+					` 
+				},
+				{
+					name: "Sweep Current",
+					code: `
+						const START = 0.1;
+						const END   = 1;
+						const STEP  = 0.01;
+						I(START)
+						ON()
+						SLEEP(1000)
+						while (I() + STEP < END) {
+						  I(I() + STEP)
+						  SLEEP(100)
+						}
+						SLEEP(1000)
+						OFF()
+					` 
+				},
+				{
+					name: "Sine Wave",
+					code: `
+						V(10.0)
+						I(1.0)
+						ON()
+						SLEEP(1000)
+						times(1000, (i) => {
+						  V(Math.sin(i / 20) * 2 + 10)
+						  SLEEP(50)
+						})
+						OFF()
+					` 
+				}
+			]
 		}
 	},
 
@@ -218,21 +304,18 @@ Vue.createApp({
 //			unit: "V",
 //		});
 
-		this.program = `
-			V(10.0)
-			I(1.0)
-			ON()
-			SLEEP(1000)
-			times(1000, (i) => {
-			  // V(V() + 0.1)
-			  V(Math.sin(i / 20) * 2 + 10)
-			  SLEEP(50)
-			})
-			OFF()
-		`.trim().replace(/\t+/g, '');
 
+		this.programExamples.forEach((example) => {
+			example.code = example.code.trim().replace(/\t+/g, '');
+		});
+		this.program = this.programExamples[0].code;
 
 		this.updateGraph();
+
+		window.addEventListener("beforeunload", (event) => {
+			event.preventDefault();
+			event.returnValue = "";
+		});
 	},
 
 	methods :{
@@ -268,6 +351,7 @@ Vue.createApp({
 		},
 
 		start: async function (port) {
+			console.log(port, port.getInfo());
 			if (!port) return;
 			this.port = port;
 			this.dps = new DPS150(this.port, (data) => {
@@ -596,6 +680,35 @@ Vue.createApp({
 			}
 		},
 
+		editBrightness: async function () {
+			const brightness = await this.openNumberInput({
+				title: "Brightness",
+				description: `Max 10`,
+				units: ["", "", "", "x1"],
+				input: this.device.brightness,
+				unit: "/10",
+			});
+			if (brightness) {
+				await this.dps.setByteValue(BRIGHTNESS, brightness);
+				await this.dps.getAll();
+			}
+		},
+
+
+		editVolume: async function () {
+			const volume = await this.openNumberInput({
+				title: "Volume",
+				description: `Max 10`,
+				units: ["", "", "", "x1"],
+				input: this.device.volume,
+				unit: "/10",
+			});
+			if (volume) {
+				await this.dps.setByteValue(VOLUME, volume);
+				await this.dps.getAll();
+			}
+		},
+
 		updateGraph: function () {
 			const voltage = { 
 				mode: "lines+markers",
@@ -607,6 +720,7 @@ Vue.createApp({
 					color: '#38a410',
 					shape: 'linear',
 				},
+				hovertemplate: '%{y:.3f}V',
 			};
 			const current = {
 				mode: "lines+markers",
@@ -619,6 +733,7 @@ Vue.createApp({
 					color: '#e84944',
 					shape: 'linear',
 				},
+				hovertemplate: '%{y:.3f}A',
 			};
 			const power = {
 				mode: "lines+markers",
@@ -631,6 +746,7 @@ Vue.createApp({
 					color: '#0097d2',
 					shape: 'linear',
 				},
+				hovertemplate: '%{y:.3f}W',
 			};
 
 
@@ -672,7 +788,7 @@ Vue.createApp({
 					domain: [0.1, 0.9],
 					// autorange: true,
 					type: 'date',
-					range: [new Date() - 1000 * 60 * 1, new Date()],// todo
+					range: [new Date() - 1000 * this.graphOptions.duration, new Date()],
 					tickformat: '%M:%S\n %H'
 					/*
 					rangeselector: {
@@ -755,49 +871,61 @@ Vue.createApp({
 
 
 		evaluateDSL: async function (text) {
+			const dslFunction = await functionWithTimeout((tempV, tempI, text) => {
+				const queue = [];
+				const scope = {
+					V: (v) => {
+						if (v) {
+							tempV = v;
+							queue.push({type: 'V', args: [v]});
+						} else {
+							return tempV;
+						}
+					},
+					I: (i) => {
+						if (i) {
+							tempI = i;
+							queue.push({type: 'I', args: [i]});
+						} else {
+							return tempI;
+						}
+					},
+					ON: () => {
+						queue.push({type: 'ON'});
+					},
+					OFF: () => {
+						queue.push({type: 'OFF'});
+					},
+					SLEEP: (n) => {
+						queue.push({type: 'SLEEP', args: [n] });
+					},
+					times: function (n, f) {
+						for (let i = 0; i < n; i++) {
+							f(i);
+						}
+					}
+				};
+
+				const argumentNames = Object.keys(scope);
+				const argumentValues = argumentNames.map((name) => scope[name]);
+
+				Function.apply(null, argumentNames.concat(text)).apply(null, argumentValues);
+				return queue;
+			}, 500);
+
+
+			let queue = [];
 			let tempV = this.device.setVoltage;
 			let tempI = this.device.setCurrent;
-			const queue = [];
-			const scope = {
-				V: (v) => {
-					if (v) {
-						tempV = v;
-						queue.push({type: 'V', args: [v]});
-					} else {
-						return tempV;
-					}
-				},
-				I: (i) => {
-					if (i) {
-						tempI = i;
-						queue.push({type: 'I', args: [i]});
-					} else {
-						return tempI;
-					}
-				},
-				ON: () => {
-					queue.push({type: 'ON'});
-				},
-				OFF: () => {
-					queue.push({type: 'OFF'});
-				},
-				SLEEP: (n) => {
-					queue.push({type: 'SLEEP', args: [n] });
-				},
-				times: function (n, f) {
-					for (let i = 0; i < n; i++) {
-						f(i);
-					}
-				}
-			};
-
-			const argumentNames = Object.keys(scope);
-			const argumentValues = argumentNames.map((name) => scope[name]);
+			try {
+				queue = await dslFunction(tempV, tempI, text);
+			} catch (e) {
+				alert(e.message, e)
+				return;
+			}
 
 			this.evalAbortController = new AbortController();
 			const signal = this.evalAbortController.signal;
-
-			Function.apply(null, argumentNames.concat(text)).apply(null, argumentValues);
 
 			console.log(queue);
 			while (queue.length > 0) {
@@ -843,6 +971,7 @@ Vue.createApp({
 			const csv = this.history.map((h) => 
 				[ h.time.toISOString(), h.v, h.i, h.p ].join('\t')
 			);
+			csv.unshift(['Time', 'Voltage', 'Current', 'Power'].join('\t'));
 			const blob = new Blob([csv.join('\n')], {type: 'text/tab-separated-values'});
 			const url = URL.createObjectURL(blob);
 			const a = document.createElement('a');

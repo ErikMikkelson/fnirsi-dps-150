@@ -4,10 +4,10 @@
 		<meta charset="utf-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
 
-		<title></title>
+		<title>FNIRSI DPS-150</title>
 
 		<link href="https://cdn.jsdelivr.net/npm/@mdi/font@7.x/css/materialdesignicons.min.css" rel="stylesheet">
-		<link href="https://cdn.jsdelivr.net/npm/vuetify@3.3.2/dist/vuetify.min.css" rel="stylesheet">
+		<link href="https://cdn.jsdelivr.net/npm/vuetify@3.7.4/dist/vuetify.min.css" rel="stylesheet">
 
 		<link rel="preconnect" href="https://fonts.googleapis.com">
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -176,8 +176,8 @@
 					<v-spacer></v-spacer>
 
 					<span class="ms-2">
-						{{ device.temperature.toFixed(0) }}°C
-						<span class="input-voltage">Input: {{ formatNumber(device.inputVoltage) }}V</span>
+						<v-chip>{{ device.temperature.toFixed(0) }}°C</v-chip>
+						<v-chip :color="device.protectionState === 'LVP' ? 'red' : 'default'">Input: {{ formatNumber(device.inputVoltage) }}V</v-chip>
 					</span>
 
 					<v-btn class="connect" icon  variant="flat" color="red" @click="connect" v-if="!port">
@@ -369,11 +369,23 @@
 									</v-tabs-window-item>
 									<v-tabs-window-item value="program">
 										<div class="d-flex">
-											<v-textarea class="flex-fill" v-model="program" prepend-icon="mdi-code-block-parentheses"
-												style="margin-right: 10px"
+											<div class="flex-fill" style="margin-right: 10px">
+											<v-textarea v-model="program" prepend-icon="mdi-code-block-parentheses"
+												style="width: 100%"
 												rows="10"
 												auto-grow
 												></v-textarea>
+												<div class="text-right">
+													<v-btn size="small">
+														Examples
+														<v-menu activator="parent">
+															<v-list>
+																<v-list-item @click="program = example.code" v-for="example in programExamples">{{ example.name }}</v-list-item>
+															</v-list>
+														</v-menu>
+													</v-btn>
+												</div>
+											</div>
 											<div style="width: 25em">
 												<v-table density="compact">
 													<template v-if="true">
@@ -470,11 +482,17 @@
 												<tbody>
 													<tr>
 														<th>Brightness</th>
-														<td>{{ device.brightness }}</td>
+														<td @click="editBrightness()" class="changeable">
+															{{ device.brightness }}
+															<v-btn size="x-small" color="green" variant="flat">set</v-btn>
+														</td>
 													</tr>
 													<tr>
 														<th>Volume</th>
-														<td>{{ device.volume }}</td>
+														<td @click="editVolume()" class="changeable">
+															{{ device.volume }}
+															<v-btn size="x-small" color="green" variant="flat">set</v-btn>
+														</td>
 													</tr>
 												</tbody>
 											</template>

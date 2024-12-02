@@ -40,7 +40,8 @@ const METERING_ENABLE = 216;
 const OUTPUT_ENABLE = 219;
 
 // byte
-const BRIGHTNESS = 214;
+export const BRIGHTNESS = 214;
+export const VOLUME = 215;
 
 const MODEL_NAME = 222;
 const HARDWARE_VERSION = 223;
@@ -189,7 +190,7 @@ export class DPS150 {
 	}
 
 	async sendCommandRaw(command) {
-		console.log('sendCommand', Array.from(command).map(v => v.toString(16)).join(" "));
+		// console.log('sendCommand', Array.from(command).map(v => v.toString(16)).join(" "));
 		const writer = this.port.writable.getWriter();
 		try {
 			await writer.write(command);
