@@ -1,6 +1,10 @@
 WebSerial / JavaScript implementation for FNIRSI - DPS-150 
 =========================================================
 
+<img src="./docs/demo.png">
+
+[![Demo on YouTube](https://img.youtube.com/vi/_RqsPEhD9YM/0.jpg)](https://www.youtube.com/watch?v=_RqsPEhD9YM )
+
 
 This is a simple implementation of the FNIRSI - DPS-150 protocol in JavaScript. It is intended to be used with the WebSerial API, which is currently only available in Chrome.
 
