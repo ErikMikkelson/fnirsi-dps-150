@@ -34,6 +34,21 @@ This project consists of the following main files and directories:
 
 This structure separates protocol logic, UI, and background processing for maintainability and clarity.
 
+```mermaid
+sequenceDiagram
+    actor User as User
+    participant Frontend as Frontend (script.js)
+    participant Worker as Worker (worker.js)
+    participant Device as Device (DPS-150)
+
+    User->>Frontend: UI operation (connect/get/set)
+    Frontend->>Worker: Send command via Comlink
+    Worker->>Device: Send command via Serial
+    Device-->>Worker: Response data (Serial)
+    Worker-->>Frontend: Response data via Comlink
+    Frontend-->>User: Update UI / Show data
+```
+
 ## Getting Started
 
 To run this project locally, simply start a static file server in the project root. For example, using [serve](https://www.npmjs.com/package/serve):
