@@ -16,6 +16,33 @@ The FNIRSI - DPS-150 is a CNC power supply working with USB-PD.
 
 This power supply can be controlled via USB. Officially, however, only software for Windows is provided.
 
+## Project File Structure
+
+This project consists of the following main files and directories:
+
+- **dps-150.js**  
+  JavaScript implementation of the FNIRSI DPS-150 protocol. Handles serial communication, command construction, and parsing.
+
+- **index.html**  
+  The main web application interface. Provides the UI for interacting with the power supply via the browser.
+
+- **script.js**  
+  Contains the frontend logic, including device connection, UI state management, and data visualization.
+
+- **worker.js**  
+  Runs as a Web Worker to handle background serial communication and device control, using Comlink for messaging.
+
+This structure separates protocol logic, UI, and background processing for maintainability and clarity.
+
+## Getting Started
+
+To run this project locally, simply start a static file server in the project root. For example, using [serve](https://www.npmjs.com/package/serve):
+
+```sh
+npx serve .
+```
+
+Then open the displayed local URL in Google Chrome.
 
 ## Protocol
 
