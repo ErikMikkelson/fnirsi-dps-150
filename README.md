@@ -35,6 +35,18 @@ This project consists of the following main files and directories:
 This structure separates protocol logic, UI, and background processing for maintainability and clarity.
 
 ```mermaid
+---
+config:
+  theme: 'base'
+  themeVariables:
+    fontFamily: "Noto Sans"
+    primaryColor: '#073359'
+    primaryTextColor: '#fff'
+    primaryBorderColor: '#333'
+    lineColor: '#333'
+    secondaryColor: '#006100'
+    textColor: '#333'
+---
 sequenceDiagram
     actor User as User
     participant Frontend as Frontend (script.js)
