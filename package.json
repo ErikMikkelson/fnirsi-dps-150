@@ -1,0 +1,23 @@
+{
+  "name": "fnirsi-dps-150",
+  "version": "1.0.0",
+  "description": "WebSerial JavaScript implementation for FNIRSI DPS-150",
+  "type": "module",
+  "scripts": {
+    "test": "CI=1 vitest",
+    "test:ui": "CI=1 vitest --ui",
+    "test:coverage": "CI=1 vitest --coverage"
+  },
+  "keywords": [
+    "fnirsi",
+    "dps-150",
+    "webserial",
+    "power-supply"
+  ],
+  "author": "cho45",
+  "license": "MIT",
+  "devDependencies": {
+    "@vitest/ui": "^2.0.0",
+    "vitest": "^2.0.0"
+  }
+}

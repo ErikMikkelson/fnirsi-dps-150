@@ -122,12 +122,12 @@ export class DPS150 {
 								s6 += c5[j];
 							};
 							s6 %= 0x100;
+							buffer = buffer.subarray(i+4+c4);
 							if (s6 != c6) {
 								// console.log('checksum error', s6, c6, Array.from(c5).map(v => v.toString(16)).join(" "));
-								break;
+								continue;
 							}
 							// console.log('readData', c1, c2, c3, c4, Array.from(c5).map(v => v.toString(16)).join(" "), c6, '==', s6);
-							buffer = buffer.subarray(i+4+c4);
 							this.parseData(c1, c2, c3, c4, c5, c6);
 						}
 					}
