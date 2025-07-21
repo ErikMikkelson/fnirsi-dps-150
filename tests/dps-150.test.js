@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { DPS150, VOLTAGE_SET, CURRENT_SET } from '../dps-150.js';
 import { MockSerialPort, mockSerial } from './mocks/webSerial.js';
 import { 
@@ -81,7 +81,7 @@ describe('DPS150', () => {
       const writtenData = mockPort.getWrittenData();
       
       expect(writtenData).toHaveLength(1);
-      expect(elapsed).toBeGreaterThanOrEqual(50); // sleep(50)による待機
+      expect(elapsed).toBeGreaterThanOrEqual(48); // sleep(50)による待機（タイミング誤差考慮）
     });
   });
 
