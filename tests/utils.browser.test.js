@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { sleep, functionWithTimeout } from '../utils.js';
 
 describe('utils.js (browser environment)', () => {
@@ -117,6 +117,123 @@ describe('utils.js (browser environment)', () => {
       expect(typeof Worker).toBe('function');
       expect(typeof Blob).toBe('function');
       expect(typeof URL.createObjectURL).toBe('function');
+    });
+  });
+
+  describe('メモリリーク対策', () => {
+    let createObjectURLSpy;
+    let revokeObjectURLSpy;
+    let originalCreateObjectURL;
+    let originalRevokeObjectURL;
+    let createdURLs;
+
+    beforeEach(() => {
+      createdURLs = [];
+      originalCreateObjectURL = URL.createObjectURL;
+      originalRevokeObjectURL = URL.revokeObjectURL;
+      
+      createObjectURLSpy = vi.fn((blob) => {
+        const url = originalCreateObjectURL(blob);
+        createdURLs.push(url);
+        return url;
+      });
+      
+      revokeObjectURLSpy = vi.fn((url) => {
+        originalRevokeObjectURL(url);
+      });
+      
+      URL.createObjectURL = createObjectURLSpy;
+      URL.revokeObjectURL = revokeObjectURLSpy;
+    });
+
+    afterEach(() => {
+      URL.createObjectURL = originalCreateObjectURL;
+      URL.revokeObjectURL = originalRevokeObjectURL;
+    });
+
+    it('正常終了時にrevokeObjectURLが呼ばれる', async () => {
+      const testFn = (a, b) => a + b;
+      const wrappedFn = functionWithTimeout(testFn, 1000);
+      
+      await wrappedFn(2, 3);
+      
+      // createObjectURLが1回呼ばれた
+      expect(createObjectURLSpy).toHaveBeenCalledTimes(1);
+      
+      // 少し待ってからrevokeObjectURLが呼ばれることを確認
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
+      // 現在の実装ではrevokeObjectURLが呼ばれないはず（テストは失敗する）
+      expect(revokeObjectURLSpy).toHaveBeenCalledTimes(1);
+      expect(revokeObjectURLSpy).toHaveBeenCalledWith(createdURLs[0]);
+    });
+
+    it('タイムアウト時にrevokeObjectURLが呼ばれる', async () => {
+      const slowFn = () => {
+        let sum = 0;
+        for (let i = 0; i < 1000000000; i++) {
+          sum += i;
+        }
+        return sum;
+      };
+      
+      const wrappedFn = functionWithTimeout(slowFn, 50);
+      
+      await expect(wrappedFn()).rejects.toThrow('timeout');
+      
+      // createObjectURLが1回呼ばれた
+      expect(createObjectURLSpy).toHaveBeenCalledTimes(1);
+      
+      // 少し待ってからrevokeObjectURLが呼ばれることを確認
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
+      // 現在の実装ではrevokeObjectURLが呼ばれないはず（テストは失敗する）
+      expect(revokeObjectURLSpy).toHaveBeenCalledTimes(1);
+      expect(revokeObjectURLSpy).toHaveBeenCalledWith(createdURLs[0]);
+    });
+
+    it('エラー時にrevokeObjectURLが呼ばれる', async () => {
+      const errorFn = () => {
+        throw new Error('Test error');
+      };
+      
+      const wrappedFn = functionWithTimeout(errorFn, 1000);
+      
+      await expect(wrappedFn()).rejects.toThrow();
+      
+      // createObjectURLが1回呼ばれた
+      expect(createObjectURLSpy).toHaveBeenCalledTimes(1);
+      
+      // 少し待ってからrevokeObjectURLが呼ばれることを確認
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
+      // 現在の実装ではrevokeObjectURLが呼ばれないはず（テストは失敗する）
+      expect(revokeObjectURLSpy).toHaveBeenCalledTimes(1);
+      expect(revokeObjectURLSpy).toHaveBeenCalledWith(createdURLs[0]);
+    });
+
+    it('複数回実行してもメモリリークしない', async () => {
+      const testFn = (x) => x * 2;
+      const wrappedFn = functionWithTimeout(testFn, 1000);
+      
+      // 3回実行
+      for (let i = 0; i < 3; i++) {
+        await wrappedFn(i);
+      }
+      
+      // createObjectURLが3回呼ばれた
+      expect(createObjectURLSpy).toHaveBeenCalledTimes(3);
+      
+      // 少し待ってからrevokeObjectURLも3回呼ばれることを確認
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
+      // 現在の実装ではrevokeObjectURLが呼ばれないはず（テストは失敗する）
+      expect(revokeObjectURLSpy).toHaveBeenCalledTimes(3);
+      
+      // 作成されたすべてのURLが解放されたことを確認
+      createdURLs.forEach((url, index) => {
+        expect(revokeObjectURLSpy).toHaveBeenNthCalledWith(index + 1, url);
+      });
     });
   });
 });

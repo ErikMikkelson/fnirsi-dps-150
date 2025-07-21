@@ -15,24 +15,34 @@ export function functionWithTimeout(fn, timeout) {
 
 	return async function (...args) {
 		return await new Promise((resolve, reject) => {
-			const worker = new Worker(URL.createObjectURL(new Blob([workerCode], { type: "application/javascript" })), {
+			const blobUrl = URL.createObjectURL(new Blob([workerCode], { type: "application/javascript" }));
+			const worker = new Worker(blobUrl, {
 				type: 'module',
 				name: 'evaluator',
 			});
-			const timer = setTimeout(() => {
+			
+			const cleanup = () => {
 				clearTimeout(timer);
 				worker.terminate();
+				URL.revokeObjectURL(blobUrl);
+			};
+			
+			const timer = setTimeout(() => {
+				cleanup();
 				reject(new Error('timeout'));
 			}, timeout);
+			
 			worker.addEventListener('message', (event) => {
-				clearTimeout(timer);
+				cleanup();
 				resolve(event.data);
 			});
+			
 			worker.addEventListener('error', (event) => {
 				console.log('error', event);
-				clearTimeout(timer);
+				cleanup();
 				reject(event);
 			});
+			
 			worker.postMessage(args);
 		});
 	};
