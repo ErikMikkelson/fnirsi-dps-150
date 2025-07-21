@@ -6,7 +6,7 @@ export async function sleep(n) {
 	});
 }
 
-export async function functionWithTimeout(fn, timeout) {
+export function functionWithTimeout(fn, timeout) {
 	const workerCode = `
 		self.onmessage = (event) => {
 		 postMessage( (${fn.toString()}).apply(null, event.data) );

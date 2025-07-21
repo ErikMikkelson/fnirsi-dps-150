@@ -29,7 +29,7 @@ describe('utils.js (browser environment)', () => {
   describe('functionWithTimeout()', () => {
     it('関数を正常に実行する', async () => {
       const testFn = (a, b) => a + b;
-      const wrappedFn = await functionWithTimeout(testFn, 1000);
+      const wrappedFn = functionWithTimeout(testFn, 1000);
       
       const result = await wrappedFn(2, 3);
       expect(result).toBe(5);
