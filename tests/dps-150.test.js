@@ -13,11 +13,6 @@ import {
   createAllResponsePacket
 } from './helpers/packet.js';
 
-// WebSerial APIのモックをセットアップ
-vi.stubGlobal('navigator', {
-  serial: mockSerial
-});
-
 describe('DPS150', () => {
   let mockPort;
   let callback;
