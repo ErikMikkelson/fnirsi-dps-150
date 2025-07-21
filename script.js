@@ -1,6 +1,7 @@
 import { sprintf } from 'https://cdn.jsdelivr.net/npm/sprintf-js@1.1.3/+esm'
 import * as Comlink from "https://unpkg.com/comlink/dist/esm/comlink.mjs";
 
+import { sleep, functionWithTimeout } from "./utils.js";
 import {
 	DPS150,
 	VOLTAGE_SET,
@@ -31,43 +32,6 @@ import {
 
 const Backend = Comlink.wrap(new Worker("worker.js", { type : "module" }));
 
-async function sleep(n) {
-	return new Promise((resolve) => {
-		setTimeout(resolve, n);
-	});
-}
-
-function functionWithTimeout(fn, timeout) {
-	const workerCode = `
-		self.onmessage = (event) => {
-		 postMessage( (${fn.toString()}).apply(null, event.data) );
-		};
-	`;
-
-	return async function (...args) {
-		return await new Promise((resolve, reject) => {
-			const worker = new Worker(URL.createObjectURL(new Blob([workerCode], { type: "application/javascript" })), {
-				type: 'module',
-				name: 'evaluator',
-			});
-			const timer = setTimeout(() => {
-				clearTimeout(timer);
-				worker.terminate();
-				reject(new Error('timeout'));
-			}, timeout);
-			worker.addEventListener('message', (event) => {
-				clearTimeout(timer);
-				resolve(event.data);
-			});
-			worker.addEventListener('error', (event) => {
-				console.log('error', event);
-				clearTimeout(timer);
-				reject(event);
-			});
-			worker.postMessage(args);
-		});
-	};
-}
 
 Vue.createApp({
 	data() {
