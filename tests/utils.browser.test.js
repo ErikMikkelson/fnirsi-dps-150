@@ -24,6 +24,22 @@ describe('utils.js (browser environment)', () => {
       
       expect(elapsed).toBeLessThan(50);
     });
+
+    it('負の値でも即座に解決する', async () => {
+      const start = Date.now();
+      await sleep(-100);
+      const elapsed = Date.now() - start;
+      
+      expect(elapsed).toBeLessThan(50);
+    });
+
+    it('非数値の場合はNaNミリ秒待つ（即座に解決）', async () => {
+      const start = Date.now();
+      await sleep('not a number');
+      const elapsed = Date.now() - start;
+      
+      expect(elapsed).toBeLessThan(50);
+    });
   });
 
   describe('functionWithTimeout()', () => {
@@ -44,14 +60,14 @@ describe('utils.js (browser environment)', () => {
         return sum;
       };
       
-      const wrappedFn = await functionWithTimeout(slowFn, 100);
+      const wrappedFn = functionWithTimeout(slowFn, 100);
       
       await expect(wrappedFn()).rejects.toThrow('timeout');
     });
 
     it('引数を正しく渡す', async () => {
       const testFn = (name, age) => `${name} is ${age} years old`;
-      const wrappedFn = await functionWithTimeout(testFn, 1000);
+      const wrappedFn = functionWithTimeout(testFn, 1000);
       
       const result = await wrappedFn('Alice', 30);
       expect(result).toBe('Alice is 30 years old');
@@ -59,7 +75,7 @@ describe('utils.js (browser environment)', () => {
 
     it('複数の引数を処理する', async () => {
       const testFn = (...args) => args.reduce((sum, val) => sum + val, 0);
-      const wrappedFn = await functionWithTimeout(testFn, 1000);
+      const wrappedFn = functionWithTimeout(testFn, 1000);
       
       const result = await wrappedFn(1, 2, 3, 4, 5);
       expect(result).toBe(15);
@@ -67,7 +83,7 @@ describe('utils.js (browser environment)', () => {
 
     it('戻り値が正しく返される', async () => {
       const testFn = () => ({ name: 'test', value: 42 });
-      const wrappedFn = await functionWithTimeout(testFn, 1000);
+      const wrappedFn = functionWithTimeout(testFn, 1000);
       
       const result = await wrappedFn();
       expect(result).toEqual({ name: 'test', value: 42 });
@@ -78,14 +94,14 @@ describe('utils.js (browser environment)', () => {
         throw new Error('Worker error');
       };
       
-      const wrappedFn = await functionWithTimeout(errorFn, 1000);
+      const wrappedFn = functionWithTimeout(errorFn, 1000);
       
       await expect(wrappedFn()).rejects.toThrow("Worker error");
     });
 
     it('関数内でthisを使用しない場合でも動作する', async () => {
       const arrowFn = (x) => x * 2;
-      const wrappedFn = await functionWithTimeout(arrowFn, 1000);
+      const wrappedFn = functionWithTimeout(arrowFn, 1000);
       
       const result = await wrappedFn(21);
       expect(result).toBe(42);
@@ -93,7 +109,7 @@ describe('utils.js (browser environment)', () => {
 
     it('同期的な関数も処理できる', async () => {
       const syncFn = (a, b) => a - b;
-      const wrappedFn = await functionWithTimeout(syncFn, 1000);
+      const wrappedFn = functionWithTimeout(syncFn, 1000);
       
       const result = await wrappedFn(10, 3);
       expect(result).toBe(7);
@@ -104,7 +120,7 @@ describe('utils.js (browser environment)', () => {
         while (true) {} // 無限ループ
       };
       
-      const wrappedFn = await functionWithTimeout(slowFn, 50);
+      const wrappedFn = functionWithTimeout(slowFn, 50);
       
       const startTime = Date.now();
       await expect(wrappedFn()).rejects.toThrow('timeout');
@@ -117,6 +133,28 @@ describe('utils.js (browser environment)', () => {
       expect(typeof Worker).toBe('function');
       expect(typeof Blob).toBe('function');
       expect(typeof URL.createObjectURL).toBe('function');
+    });
+
+    it('負のタイムアウト値でも動作する', async () => {
+      const testFn = () => 'immediate';
+      const wrappedFn = functionWithTimeout(testFn, -100);
+      
+      await expect(wrappedFn()).rejects.toThrow('timeout');
+    });
+
+    it('非常に大きなタイムアウト値でも動作する', async () => {
+      const testFn = (x) => x * 3;
+      const wrappedFn = functionWithTimeout(testFn, 999999999);
+      
+      const result = await wrappedFn(14);
+      expect(result).toBe(42);
+    });
+
+    it('関数ではない引数を渡した場合のエラー処理', async () => {
+      const notAFunction = 'not a function';
+      const wrappedFn = functionWithTimeout(notAFunction, 1000);
+      
+      await expect(wrappedFn()).rejects.toThrow();
     });
   });
 
@@ -163,7 +201,7 @@ describe('utils.js (browser environment)', () => {
       // 少し待ってからrevokeObjectURLが呼ばれることを確認
       await new Promise(resolve => setTimeout(resolve, 10));
       
-      // 現在の実装ではrevokeObjectURLが呼ばれないはず（テストは失敗する）
+      // cleanup関数によりrevokeObjectURLが呼ばれることを確認
       expect(revokeObjectURLSpy).toHaveBeenCalledTimes(1);
       expect(revokeObjectURLSpy).toHaveBeenCalledWith(createdURLs[0]);
     });
@@ -187,7 +225,7 @@ describe('utils.js (browser environment)', () => {
       // 少し待ってからrevokeObjectURLが呼ばれることを確認
       await new Promise(resolve => setTimeout(resolve, 10));
       
-      // 現在の実装ではrevokeObjectURLが呼ばれないはず（テストは失敗する）
+      // cleanup関数によりrevokeObjectURLが呼ばれることを確認
       expect(revokeObjectURLSpy).toHaveBeenCalledTimes(1);
       expect(revokeObjectURLSpy).toHaveBeenCalledWith(createdURLs[0]);
     });
@@ -207,7 +245,7 @@ describe('utils.js (browser environment)', () => {
       // 少し待ってからrevokeObjectURLが呼ばれることを確認
       await new Promise(resolve => setTimeout(resolve, 10));
       
-      // 現在の実装ではrevokeObjectURLが呼ばれないはず（テストは失敗する）
+      // cleanup関数によりrevokeObjectURLが呼ばれることを確認
       expect(revokeObjectURLSpy).toHaveBeenCalledTimes(1);
       expect(revokeObjectURLSpy).toHaveBeenCalledWith(createdURLs[0]);
     });
@@ -227,7 +265,7 @@ describe('utils.js (browser environment)', () => {
       // 少し待ってからrevokeObjectURLも3回呼ばれることを確認
       await new Promise(resolve => setTimeout(resolve, 10));
       
-      // 現在の実装ではrevokeObjectURLが呼ばれないはず（テストは失敗する）
+      // cleanup関数によりrevokeObjectURLが呼ばれることを確認
       expect(revokeObjectURLSpy).toHaveBeenCalledTimes(3);
       
       // 作成されたすべてのURLが解放されたことを確認
