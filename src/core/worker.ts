@@ -1,11 +1,11 @@
 import * as Comlink from 'comlink';
 
+import { sleep } from '../utils';
 import {
   CURRENT_SET,
   DPS150,
   VOLTAGE_SET,
 } from './dps-150';
-import { sleep } from '../utils';
 
 export class Backend {
   port: SerialPort | null = null;
