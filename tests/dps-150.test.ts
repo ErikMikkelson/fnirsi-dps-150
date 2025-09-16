@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { DPS150, VOLTAGE_SET, CURRENT_SET } from '../dps-150.js';
-import { MockSerialPort, mockSerial } from './mocks/webSerial.js';
+import { DPS150, VOLTAGE_SET, CURRENT_SET } from '../src/dps-150.ts';
+import { MockSerialPort, mockSerial } from './mocks/webSerial.ts';
 import { 
   createCommandPacket, 
   createFloatCommandPacket, 
@@ -11,12 +11,12 @@ import {
   createMultiFloatResponsePacket,
   createStringResponsePacket,
   createAllResponsePacket
-} from './helpers/packet.js';
+} from './helpers/packet.ts';
 
 describe('DPS150', () => {
-  let mockPort;
-  let callback;
-  let dps;
+  let mockPort: MockSerialPort;
+  let callback: any;
+  let dps: DPS150;
 
   beforeEach(() => {
     mockPort = new MockSerialPort();

@@ -1,6 +1,17 @@
 import { vi } from 'vitest';
 
 export class MockSerialPort {
+  isOpen: boolean;
+  openOptions: any;
+  writtenData: Uint8Array[];
+  readQueue: Uint8Array[];
+  readerCancelled: boolean;
+  _readable: any;
+  _writable: any;
+  _reader: any;
+  _writer: any;
+  _dataWaiters: any[];
+
   constructor() {
     this.isOpen = false;
     this.openOptions = null;
@@ -14,7 +25,7 @@ export class MockSerialPort {
     this._dataWaiters = [];
   }
 
-  async open(options) {
+  async open(options: any) {
     if (this.isOpen) {
       throw new Error('Port is already open');
     }
@@ -97,10 +108,9 @@ export class MockSerialPort {
   }
 
   // テスト用ヘルパーメソッド
-  pushReadData(data) {
-    this.readQueue.push(new Uint8Array(data));
-    
-    // 待機中のreaderがあれば通知
+  pushReadData(data: Uint8Array) {
+    this.readQueue.push(data);
+    // 待機中のreaderがあれば解決
     if (this._dataWaiters.length > 0) {
       const resolve = this._dataWaiters.shift();
       const value = this.readQueue.shift();
@@ -111,40 +121,48 @@ export class MockSerialPort {
   getWrittenData() {
     return this.writtenData;
   }
-
-  clearWrittenData() {
-    this.writtenData = [];
-  }
 }
 
-// navigator.serialのモック
 export const mockSerial = {
-  ports: [],
+  ports: [] as MockSerialPort[],
+  listeners: {} as { [key: string]: any[] },
   
-  getPorts: vi.fn(async () => {
-    return mockSerial.ports;
-  }),
-  
-  addEventListener: vi.fn(),
-  removeEventListener: vi.fn(),
-  
+  addEventListener(event: string, callback: any) {
+    if (!this.listeners[event]) {
+      this.listeners[event] = [];
+    }
+    this.listeners[event].push(callback);
+  },
+
+  removeEventListener(event: string, callback: any) {
+    if (this.listeners[event]) {
+      this.listeners[event] = this.listeners[event].filter(cb => cb !== callback);
+    }
+  },
+
+  async getPorts() {
+    return this.ports;
+  },
+
   // テスト用ヘルパー
-  addMockPort(port) {
+  addMockPort(port: MockSerialPort) {
     this.ports.push(port);
   },
-  
-  clearPorts() {
+
+  clearMockPorts() {
     this.ports = [];
   },
-  
-  triggerDisconnect(port) {
-    const listeners = this.addEventListener.mock.calls
-      .filter(call => call[0] === 'disconnect')
-      .map(call => call[1]);
-    
-    listeners.forEach(listener => {
-      listener({ target: port });
-    });
+
+  triggerConnect(port: MockSerialPort) {
+    if (this.listeners['connect']) {
+      this.listeners['connect'].forEach(cb => cb({ port }));
+    }
+  },
+
+  triggerDisconnect(port: MockSerialPort) {
+    if (this.listeners['disconnect']) {
+      this.listeners['disconnect'].forEach(cb => cb({ port }));
+    }
   }
 };
 

@@ -9,18 +9,18 @@ export default defineConfig({
           name: 'node',
           globals: true,
           environment: 'node',
-          setupFiles: ['./tests/setup.js'],
+          setupFiles: ['./tests/setup.ts'],
           silent: process.env.CI === '1',
-          include: ['tests/**/*.test.js'],
-          exclude: ['tests/**/*.browser.test.js'],
+          include: ['tests/**/*.test.ts'],
+          exclude: ['tests/**/*.browser.test.ts'],
           coverage: {
             reporter: ['text', 'json', 'html'],
             exclude: [
               'node_modules/**',
               'tests/**',
-              '**/*.config.js',
-              'script.js',
-              'worker.js',
+              '**/*.config.ts',
+              'script.ts',
+              'worker.ts',
               'index.html'
             ]
           }
@@ -31,7 +31,7 @@ export default defineConfig({
         test: {
           name: 'browser',
           globals: true,
-          include: ['tests/**/*.browser.test.js'],
+          include: ['tests/**/*.browser.test.ts'],
           browser: {
             enabled: true,
             provider: 'playwright',
