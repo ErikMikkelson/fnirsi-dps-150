@@ -63,7 +63,7 @@ export class DPS150 {
 	callback: (data: any) => void;
 	reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
 
-	constructor(port: any /*SerialPort*/, callback: (data: any) => void) {
+	constructor(port: any, callback: (data: any) => void) {
 		this.port = port;
 		this.callback = callback;
 	}
@@ -157,7 +157,7 @@ export class DPS150 {
 		await this.getAll();
 	}
 
-	async sendCommand(c1: number, c2: number, c3: number, c5: number | number[]) {
+	async sendCommand(c1: number, c2: number, c3: number, c5: any) {
 		/**
 		 * c1: 0xf0 (in) or 0xf1 (out)
 		 * c2: command
@@ -191,12 +191,12 @@ export class DPS150 {
 	async sendCommandFloat(c1: number, c2: number, c3: number, c5: number) {
 		const v = new DataView(new ArrayBuffer(4));
 		v.setFloat32(0, c5, true);
-		await this.sendCommand(c1, c2, c3, Array.from(new Uint8Array(v.buffer)));
+		await this.sendCommand(c1, c2, c3, new Uint8Array(v.buffer));
 	}
 
 	async sendCommandRaw(command: Uint8Array) {
 		// console.log('sendCommand', Array.from(command).map(v => v.toString(16)).join(" "));
-		const writer = this.port.writable!.getWriter();
+		const writer = this.port.writable.getWriter();
 		try {
 			await writer.write(command);
 			await sleep(50);
