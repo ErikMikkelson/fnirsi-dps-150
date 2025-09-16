@@ -7,9 +7,9 @@ import type { Remote } from 'comlink';
 import * as Comlink from 'comlink';
 import { defineStore } from 'pinia';
 
-import type { Backend as MyWorker } from '../worker';
+import type { Backend as MyWorker } from '../core/worker';
 
-const Backend = Comlink.wrap<typeof MyWorker>(new Worker(new URL('../worker.ts', import.meta.url), { type: 'module' }));
+const Backend = Comlink.wrap<typeof MyWorker>(new Worker(new URL('../core/worker.ts', import.meta.url), { type: 'module' }));
 
 export const useDeviceStore = defineStore('device', () => {
   const port = ref<SerialPort | null>(null);

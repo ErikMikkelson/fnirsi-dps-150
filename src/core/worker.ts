@@ -5,7 +5,7 @@ import {
   DPS150,
   VOLTAGE_SET,
 } from './dps-150';
-import { sleep } from './utils';
+import { sleep } from '../utils';
 
 export class Backend {
   port: SerialPort | null = null;

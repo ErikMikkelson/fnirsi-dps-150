@@ -11,7 +11,7 @@ import {
   CURRENT_SET,
   DPS150,
   VOLTAGE_SET,
-} from '../src/dps-150.ts';
+} from '../src/core/dps-150.ts';
 import {
   createCommandPacket,
   createFloatCommandPacket,

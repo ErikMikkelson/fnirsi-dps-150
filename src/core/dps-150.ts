@@ -1,4 +1,4 @@
-import { sleep } from './utils';
+import { sleep } from '../utils';
 
 const HEADER_INPUT  = 0xf0; // 240
 const HEADER_OUTPUT = 0xf1; // 241
