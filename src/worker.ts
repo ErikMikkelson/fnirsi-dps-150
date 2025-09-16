@@ -12,7 +12,7 @@ async function sleep(n: number) {
   });
 }
 
-export class Worker {
+export class Backend {
   port: SerialPort | null = null;
   dps: DPS150 | null = null;
   callback: ((data: any) => void) | null = null;
@@ -124,6 +124,6 @@ export class Worker {
   }
 }
 
-Comlink.expose(Worker);
+Comlink.expose(Backend);
 
 

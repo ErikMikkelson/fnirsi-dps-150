@@ -144,11 +144,11 @@ export class DPS150 {
 			try {
 				while (true) {
 					const { value, done } = await reader.read();
-					if (done) {
+					if (done || !value) {
 						console.log('done');
 						return;
 					}
-					let b = new Uint8Array(buffer.length + value.length);
+					const b = new Uint8Array(buffer.length + value.length);
 					b.set(buffer);
 					b.set(value, buffer.length);
 					buffer = b;
@@ -249,6 +249,10 @@ export class DPS150 {
 
 	async sendCommandRaw(command: Uint8Array): Promise<void> {
 		// console.log('sendCommand', Array.from(command).map(v => v.toString(16)).join(" "));
+		if (!this.port.writable) {
+			console.error("Port is not writable");
+			return;
+		}
 		const writer = this.port.writable.getWriter();
 		try {
 			await writer.write(command);

@@ -75,3 +75,5 @@ pids/
 tmp/
 temp/
 .claude/
+
+dist

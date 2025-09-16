@@ -15,14 +15,14 @@ import {
   LVP,
   BRIGHTNESS,
   VOLUME,
-} from '../dps-150.ts';
+} from './dps-150.ts';
 import { functionWithTimeout } from '../utils.js';
-import type { Worker as MyWorker } from '../worker';
+import type { Backend as MyWorker } from './worker';
 
 // @ts-ignore
 import Plotly from 'plotly.js/dist/plotly.min.js';
 
-const Backend = Comlink.wrap<typeof MyWorker>(new Worker(new URL('../worker.ts', import.meta.url), { type: 'module' }));
+const Backend = Comlink.wrap<typeof MyWorker>(new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' }));
 
 const port = ref<SerialPort | null>(null);
 const dps = ref<Remote<MyWorker> | null>(null);
