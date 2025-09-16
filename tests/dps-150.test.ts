@@ -11,13 +11,13 @@ import {
   CURRENT_SET,
   DPS150,
   VOLTAGE_SET,
-} from '../dps-150.js';
+} from '../dps-150.ts';
 import {
   createCommandPacket,
   createFloatCommandPacket,
   createFloatResponsePacket,
   floatToLittleEndian,
-} from './helpers/packet.js';
+} from './helpers/packet.ts';
 import { MockSerialPort } from './mocks/webSerial.js';
 
 describe('DPS150', () => {
