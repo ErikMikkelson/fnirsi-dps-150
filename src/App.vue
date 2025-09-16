@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted } from 'vue';
 import { sprintf } from 'sprintf-js';
-import * as Comlink from 'comlink';
-import type { Remote } from 'comlink';
+import { useDeviceStore } from './store/device';
 import {
   VOLTAGE_SET,
   CURRENT_SET,
@@ -17,57 +16,34 @@ import {
   VOLUME,
 } from './dps-150.ts';
 import { functionWithTimeout } from './utils.ts';
-import type { Backend as MyWorker } from './worker';
+import Graph from './components/Graph.vue';
+import NumberInput from './components/NumberInput.vue';
+import OutputView from './components/OutputView.vue';
+import MemoryGroups from './components/MemoryGroups.vue';
+import Protections from './components/Protections.vue';
+import Metering from './components/Metering.vue';
+import Program from './components/Program.vue';
+import History from './components/History.vue';
+import Settings from './components/Settings.vue';
 
-// @ts-ignore
-import Plotly from 'plotly.js/dist/plotly.min.js';
-
-const Backend = Comlink.wrap<typeof MyWorker>(new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' }));
-
-const port = ref<SerialPort | null>(null);
-const dps = ref<Remote<MyWorker> | null>(null);
-
-const device = reactive({
-  inputVoltage: 0,
-  setVoltage: 0,
-  setCurrent: 0,
-  outputVoltage: 0,
-  outputCurrent: 0,
-  outputPower: 0,
-  temperature: 0,
-  group1setVoltage: 0,
-  group1setCurrent: 0,
-  group2setVoltage: 0,
-  group2setCurrent: 0,
-  group3setVoltage: 0,
-  group3setCurrent: 0,
-  group4setVoltage: 0,
-  group4setCurrent: 0,
-  group5setVoltage: 0,
-  group5setCurrent: 0,
-  group6setVoltage: 0,
-  group6setCurrent: 0,
-  overVoltageProtection: 0,
-  overCurrentProtection: 0,
-  overPowerProtection: 0,
-  overTemperatureProtection: 0,
-  lowVoltageProtection: 0,
-  brightness: 0,
-  volume: 0,
-  meteringClosed: false,
-  outputCapacity: 0,
-  outputEnergy: 0,
-  outputClosed: false,
-  protectionState: '',
-  mode: 'CV',
-  upperLimitVoltage: 0,
-  upperLimitCurrent: 0,
-  modelName: '',
-  firmwareVersion: '',
-  hardwareVersion: '',
-});
-
-const history = ref<{ time: Date; v: number; i: number; p: number }[]>([]);
+const deviceStore = useDeviceStore();
+const {
+  port,
+  device,
+  history,
+  init,
+  connect,
+  disconnect,
+  enable,
+  disable,
+  startMetering,
+  stopMetering,
+  setFloatValue,
+  setByteValue,
+  executeCommands,
+  abortExecuteCommands,
+  resetHistory,
+} = deviceStore;
 
 const historyTableHeaders = [
   { title: 'Time', align: 'start', sortable: true, key: 'time' },
@@ -172,129 +148,10 @@ const groups = computed(() => {
   });
 });
 
-const graph = ref<HTMLDivElement | null>(null);
+const graph = ref<InstanceType<typeof Graph> | null>(null);
 
 function updateGraph() {
-    if (!graph.value) return;
-  const voltage = {
-    mode: 'lines+markers',
-    x: [],
-    y: [],
-    name: 'Voltage',
-    line: {
-      width: 3,
-      color: '#38a410',
-      shape: 'linear',
-    },
-    hovertemplate: '%{y:.3f}V',
-  };
-  const current = {
-    mode: 'lines+markers',
-    x: [],
-    y: [],
-    name: 'Current',
-    yaxis: 'y2',
-    line: {
-      width: 3,
-      color: '#e84944',
-      shape: 'linear',
-    },
-    hovertemplate: '%{y:.3f}A',
-  };
-  const power = {
-    mode: 'lines+markers',
-    x: [],
-    y: [],
-    name: 'Power',
-    yaxis: 'y3',
-    line: {
-      width: 3,
-      color: '#0097d2',
-      shape: 'linear',
-    },
-    hovertemplate: '%{y:.3f}W',
-  };
-
-  for (let i = 0; i < history.value.length; i++) {
-    const h = history.value[i];
-    voltage.x.push(h.time);
-    voltage.y.push(h.v);
-    current.x.push(h.time);
-    current.y.push(h.i);
-    power.x.push(h.time);
-    power.y.push(h.p);
-    if (i > 60) break;
-  }
-
-  const data = [];
-  if (graphOptions.voltage) {
-    data.push(voltage);
-  }
-  if (graphOptions.current) {
-    data.push(current);
-  }
-  if (graphOptions.power) {
-    data.push(power);
-  }
-
-  const layout = {
-    title: { text: '' },
-    showlegend: false,
-    margin: {
-      t: 0,
-      b: 50,
-      l: 0,
-      r: 0,
-    },
-    xaxis: {
-      domain: [0.1, 0.9],
-      type: 'date',
-      range: [new Date(Date.now() - 1000 * graphOptions.duration), new Date()],
-      tickformat: '%M:%S\n %H',
-    },
-    yaxis: {
-      title: {
-        text: 'V',
-        font: { color: '#38a410' },
-      },
-      tickfont: { color: '#38a410' },
-      minallowed: 0,
-      rangemode: 'tozero',
-      autorange: 'max',
-    },
-    yaxis2: {
-      title: {
-        text: 'I',
-        font: { color: '#e84944' },
-      },
-      tickfont: { color: '#e84944' },
-      anchor: 'free',
-      overlaying: 'y',
-      side: 'left',
-      position: 0.05,
-      minallowed: 0,
-      rangemode: 'tozero',
-      autorange: 'max',
-    },
-    yaxis3: {
-      title: {
-        text: 'P',
-        font: { color: '#0097d2' },
-      },
-      tickfont: { color: '#0097d2' },
-      anchor: 'x',
-      overlaying: 'y',
-      side: 'right',
-      minallowed: 0,
-      rangemode: 'tozero',
-      autorange: 'max',
-    },
-  };
-
-  Plotly.react(graph.value, data, layout, {
-    displayModeBar: false,
-    responsive: true,
-  });
+  graph.value?.updateGraph();
 }
 
 watch(history, updateGraph, { deep: true });
@@ -303,152 +160,19 @@ watch(port, (newPort) => {
 });
 watch(graphOptions, updateGraph, { deep: true });
 
-async function init() {
-  if (!navigator.serial) {
-    return;
-  }
-  dps.value = await new Backend();
-  const ports = await navigator.serial.getPorts();
-  if (ports.length) {
-    start(ports[0]);
-  }
-}
-
-async function start(p: SerialPort) {
-  if (!p) return;
-  port.value = p;
-  const portInfo = p.getInfo();
-
-  await dps.value!.startSerialPort(
-    {
-      usbVendorId: portInfo.usbVendorId,
-      usbProductId: portInfo.usbProductId,
-    },
-    Comlink.proxy((data) => {
-      if (!data) {
-        port.value = null;
-        return;
-      }
-      Object.assign(device, data);
-      if (typeof data.outputVoltage === 'number') {
-        if (
-          history.value.length >= 2 &&
-          data.outputVoltage === 0 &&
-          data.outputCurrent === 0 &&
-          data.outputPower === 0 &&
-          history.value[0].v === 0 &&
-          history.value[0].i === 0 &&
-          history.value[0].p === 0 &&
-          history.value[1].v === 0 &&
-          history.value[1].i === 0 &&
-          history.value[1].p === 0
-        ) {
-          history.value[0].time = new Date();
-          return;
-        }
-        history.value.unshift({
-          time: new Date(),
-          v: data.outputVoltage,
-          i: data.outputCurrent,
-          p: data.outputPower,
-        });
-        history.value = history.value.slice(0, 10000);
-      }
-    })
-  );
-}
-
-async function connect() {
-  start(await navigator.serial.requestPort());
-}
-
-async function disconnect() {
-  if (port.value) {
-    await dps.value!.stopSerialPort();
-    port.value = null;
-  }
-}
-
-async function enable() {
-  await dps.value!.enable();
-}
-
-async function disable() {
-  await dps.value!.disable();
-}
-
-async function startMetering() {
-  await dps.value!.startMetering();
-  await dps.value!.getAll();
-}
-
-async function stopMetering() {
-  await dps.value!.stopMetering();
-  await dps.value!.getAll();
-}
-
-async function openNumberInput(opts: any) {
-  numberInput.result = '';
-  numberInput.title = opts.title || '';
-  numberInput.description = opts.description || '';
-  numberInput.descriptionHtml = opts.descriptionHtml || '';
-  numberInput.prev = opts.input || '';
-  numberInput.unit = opts.unit || '';
-  numberInput.units = opts.units || [];
-  numberInput.input = '';
-  showNumberInput.value = true;
-
-  const keyDown = (e: KeyboardEvent) => {
-    numberInputChar(e.key);
-  };
-
-  window.addEventListener('keydown', keyDown);
-
-  return await new Promise((resolve) => {
-    const unwatch = watch(showNumberInput, () => {
-      unwatch();
-      window.removeEventListener('keydown', keyDown);
-      resolve(numberInput.result);
-    });
+onMounted(() => {
+  init();
+  programExamples.forEach((example) => {
+    example.code = example.code.trim().replace(/\t+/g, '');
   });
-}
+  program.value = programExamples[0].code;
+  updateGraph();
+});
 
-function numberInputChar(char: string) {
-  const UNITS: { [key: string]: number } = {
-    'G': 1e9, 'M': 1e6, 'k': 1e3, 'x1': 1, 'm': 1e-3, 'µ': 1e-6, 'n': 1e-9, 'p': 1e-12,
-    'mV': 1e-3, 'V': 1, 'mA': 1e-3, 'A': 1, 'mW': 1e-3, 'W': 1, '℃': 1,
-  };
-
-  if (/^[0-9]$/.test(char)) {
-    numberInput.input += char;
-  } else if (char === '.') {
-    if (!numberInput.input.includes('.')) {
-      numberInput.input += char;
-    }
-  } else if (char === 'Backspace' || char === '\u232B') {
-    if (numberInput.input.length) {
-      numberInput.input = numberInput.input.slice(0, -1);
-    } else {
-      showNumberInput.value = false;
-    }
-  } else if (char === '-') {
-    if (numberInput.input[0] === '-') {
-      numberInput.input = numberInput.input.slice(1);
-    } else {
-      numberInput.input = '-' + numberInput.input;
-    }
-  } else if (UNITS[char]) {
-    const base = parseFloat(numberInput.input);
-    numberInput.result = base * UNITS[char];
-    showNumberInput.value = false;
+async function onNumberInput(value: number) {
+  if (value) {
+    await setFloatValue(numberInput.key, value);
   }
-}
-
-function numberInputButton(e: Event) {
-    const char = (e.target as HTMLElement).textContent?.replace(/\s+/g, '');
-    if (char) {
-        numberInputChar(char);
-    }
 }
 
 async function changeVoltage() {
@@ -458,11 +182,8 @@ async function changeVoltage() {
     units: ['', '', 'mV', 'V'],
     input: device.setVoltage,
     unit: 'V',
+    key: VOLTAGE_SET,
   });
-  if (voltage) {
-    await dps.value!.setFloatValue(VOLTAGE_SET, voltage as number);
-    await dps.value!.getAll();
-  }
 }
 
 async function changeCurrent() {
@@ -472,81 +193,63 @@ async function changeCurrent() {
     units: ['', '', 'mA', 'A'],
     input: device.setCurrent,
     unit: 'A',
+    key: CURRENT_SET,
   });
-  if (current) {
-    await dps.value!.setFloatValue(CURRENT_SET, current as number);
-    await dps.value!.getAll();
-  }
 }
 
 async function changeOVP() {
-  const voltage = await openNumberInput({
+  await openNumberInput({
     title: 'Over Voltage Protection',
     description: ``,
     units: ['', '', 'mV', 'V'],
     input: device.overVoltageProtection,
     unit: 'V',
+    key: OVP,
   });
-  if (voltage) {
-    await dps.value!.setFloatValue(OVP, voltage as number);
-    await dps.value!.getAll();
-  }
 }
 
 async function changeOCP() {
-  const current = await openNumberInput({
+  await openNumberInput({
     title: 'Over Current Protection',
     description: ``,
     units: ['', '', 'mA', 'A'],
     input: device.overCurrentProtection,
     unit: 'A',
+    key: OCP,
   });
-  if (current) {
-    await dps.value!.setFloatValue(OCP, current as number);
-    await dps.value!.getAll();
-  }
 }
 
 async function changeOPP() {
-  const power = await openNumberInput({
+  await openNumberInput({
     title: 'Over Power Protection',
     description: ``,
     units: ['', '', '', 'W'],
     input: device.overPowerProtection,
     unit: 'W',
+    key: OPP,
   });
-  if (power) {
-    await dps.value!.setFloatValue(OPP, power as number);
-    await dps.value!.getAll();
-  }
 }
 
 async function changeOTP() {
-  const temp = await openNumberInput({
+  await openNumberInput({
     title: 'Over Temperature Protection',
     description: ``,
     units: ['', '', '', '℃'],
     input: device.overTemperatureProtection,
     unit: '℃',
+    key: OTP,
   });
-  if (temp) {
-    await dps.value!.setFloatValue(OTP, temp as number);
-    await dps.value!.getAll();
-  }
 }
 
 async function changeLVP() {
-  const voltage = await openNumberInput({
+  await openNumberInput({
     title: 'Low Voltage Protection',
     description: ``,
     units: ['', '', 'mV', 'V'],
     input: device.lowVoltageProtection,
     unit: 'V',
+    key: LVP,
   });
-  if (voltage) {
-    await dps.value!.setFloatValue(LVP, voltage as number);
-    await dps.value!.getAll();
-  }
 }
 
 function formatNumber(n: number) {
@@ -588,11 +291,10 @@ async function setGroup(group: any) {
   const cmdVoltage = GROUP1_VOLTAGE_SET + (groupNumber - 1) * 2;
   const cmdCurrent = GROUP1_CURRENT_SET + (groupNumber - 1) * 2;
 
-  await dps.value!.setFloatValue(VOLTAGE_SET, setVoltage);
-  await dps.value!.setFloatValue(CURRENT_SET, setCurrent);
-  await dps.value!.setFloatValue(cmdVoltage, setVoltage);
-  await dps.value!.setFloatValue(cmdCurrent, setCurrent);
-  await dps.value!.getAll();
+  await setFloatValue(VOLTAGE_SET, setVoltage);
+  await setFloatValue(CURRENT_SET, setCurrent);
+  await setFloatValue(cmdVoltage, setVoltage);
+  await setFloatValue(cmdCurrent, setCurrent);
 
   groupsInput[group.n].setVoltage = null;
   groupsInput[group.n].setCurrent = null;
@@ -648,8 +350,7 @@ async function editBrightness() {
     unit: '/10',
   });
   if (brightness) {
-    await dps.value!.setByteValue(BRIGHTNESS, brightness as number);
-    await dps.value!.getAll();
+    await setByteValue(BRIGHTNESS, brightness as number);
   }
 }
 
@@ -662,8 +363,7 @@ async function editVolume() {
     unit: '/10',
   });
   if (volume) {
-    await dps.value!.setByteValue(VOLUME, volume as number);
-    await dps.value!.getAll();
+    await setByteValue(VOLUME, volume as number);
   }
 }
 
@@ -722,11 +422,11 @@ async function evaluateDSL(text: string) {
 
   programRunning.value = true;
   programRemaining.value = queue.length;
-  await dps.value!.executeCommands(
+  await executeCommands(
     queue,
-    Comlink.proxy((n) => {
+    (n) => {
       programRemaining.value = n;
-    })
+    }
   );
   programRunning.value = false;
 }
@@ -736,11 +436,7 @@ function runProgram() {
 }
 
 function abortProgram() {
-  dps.value!.abortExecuteCommands();
-}
-
-function resetHistory() {
-  history.value = [];
+  abortExecuteCommands();
 }
 
 function downloadHistory() {
@@ -754,15 +450,6 @@ function downloadHistory() {
   a.click();
   URL.revokeObjectURL(url);
 }
-
-onMounted(() => {
-  init();
-  programExamples.forEach((example) => {
-    example.code = example.code.trim().replace(/\t+/g, '');
-  });
-  program.value = programExamples[0].code;
-  updateGraph();
-});
 </script>
 
 <template>
@@ -804,7 +491,7 @@ onMounted(() => {
         <div class="d-flex">
           <div class="flex-fill" style="padding: 10px; height: 500px">
             <div style="position: relative; height: 100%">
-              <div ref="graph" style="height: 100%"></div>
+              <Graph ref="graph" :history="history" :graph-options="graphOptions" />
               <div class="d-flex justify-center" style="position: absolute; bottom: 0">
                 <v-checkbox label="Voltage" hide-details color="green" v-model="graphOptions.voltage"></v-checkbox>
                 <v-checkbox label="Current" hide-details color="red" v-model="graphOptions.current"></v-checkbox>
@@ -813,35 +500,7 @@ onMounted(() => {
             </div>
           </div>
 
-          <div class="main-view" :class="{ enabled: device.outputClosed }" style="width: 300px">
-            <div class="changeable voltage" @click="changeVoltage">
-              <span>{{ port ? formatNumber(device.outputVoltage) : '-' }}</span><span class="unit">V</span>
-              <div class="set">
-                vset <span>{{ formatNumber(device.setVoltage) }}</span><span class="unit">V</span>
-              </div>
-            </div>
-            <div class="changeable current" @click="changeCurrent">
-              <span>{{ port ? formatNumber(device.outputCurrent) : '-' }}</span><span class="unit">A</span>
-              <div class="set">
-                cset <span>{{ formatNumber(device.setCurrent) }}</span><span class="unit">A</span>
-              </div>
-            </div>
-            <div class="power">
-              <span>{{ port ? formatNumber(device.outputPower) : '-' }}</span><span class="unit">W</span>
-            </div>
-            <v-chip :class="{ current: device.mode === 'CC', voltage: device.mode === 'CV' }" variant="flat" size="large">
-              {{ device.mode }}
-              <v-tooltip activator="parent" location="start">
-                {{ device.mode === 'CC' ? 'Constant Current' : 'Constant Voltage' }}
-              </v-tooltip>
-            </v-chip>
-            <v-chip :color="device.protectionState ? 'red' : 'green'" variant="flat" size="large">
-              {{ device.protectionState || 'OK' }}
-              <v-tooltip activator="parent" location="start">
-                {{ formatProtectionState(device.protectionState) }}
-              </v-tooltip>
-            </v-chip>
-          </div>
+          <OutputView :port="port" :device="device" @change-voltage="changeVoltage" @change-current="changeCurrent" />
         </div>
 
         <v-card>
@@ -857,209 +516,27 @@ onMounted(() => {
           <v-card-text>
             <v-window v-model="tab">
               <v-window-item value="memory">
-                <v-table density="compact" style="max-width: 30em" class="groups">
-                  <tbody>
-                    <tr v-for="group in groups" :key="group.n">
-                      <td>
-                        <v-btn size="x-small" :color="groupChanged(group, null) ? 'red' : 'green'" variant="flat" @click="setGroup(group)">
-                          M{{ group.n }}
-                          <v-tooltip activator="parent" location="start">
-                            {{ groupChanged(group, null) ? 'Update with changed values' : `Set M${group.n}` }}
-                          </v-tooltip>
-                        </v-btn>
-                      </td>
-                      <td @click="editGroupVoltage(group)" class="changeable" :class="{ changed: groupChanged(group, 'V') }">
-                        {{ formatNumber(groupsInput[group.n].setVoltage || group.setVoltage) }}V
-                        <v-btn size="x-small" color="green" variant="flat">set</v-btn>
-                      </td>
-                      <td @click="editGroupCurrent(group)" class="changeable" :class="{ changed: groupChanged(group, 'I') }">
-                        {{ formatNumber(groupsInput[group.n].setCurrent || group.setCurrent) }}A
-                        <v-btn size="x-small" color="green" variant="flat">set</v-btn>
-                      </td>
-                    </tr>
-                  </tbody>
-                </v-table>
+                <MemoryGroups :groups="groups" :groups-input="groupsInput" @set-group="setGroup" @edit-group-voltage="editGroupVoltage" @edit-group-current="editGroupCurrent" />
               </v-window-item>
               <v-window-item value="metering">
-                <v-btn @click="startMetering" color="green" v-if="device.meteringClosed">Start</v-btn>
-                <v-btn @click="stopMetering" color="red" v-else>Stop</v-btn>
-                <v-table density="compact" style="max-width: 30em">
-                  <tbody>
-                    <tr>
-                      <td>Output Capacity</td>
-                      <td>
-                        <span v-if="device.outputCapacity < 1">
-                          {{ formatNumber(device.outputCapacity * 1000) }}mAh
-                        </span>
-                        <span v-else>
-                          {{ formatNumber(device.outputCapacity) }}Ah
-                        </span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>Output Energy</td>
-                      <td>
-                        <span v-if="device.outputEnergy < 1">
-                          {{ formatNumber(device.outputEnergy * 1000) }}mWh
-                        </span>
-                        <span v-else>
-                          {{ formatNumber(device.outputEnergy) }}Wh
-                        </span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </v-table>
+                <Metering :device="device" @start-metering="startMetering" @stop-metering="stopMetering" />
               </v-window-item>
               <v-window-item value="protections">
-                <v-table density="compact" style="max-width: 30em">
-                  <tbody>
-                    <tr>
-                      <th>Over Voltage Protection</th>
-                      <td @click="changeOVP" class="changeable">
-                        {{ formatNumber(device.overVoltageProtection) }}V
-                        <v-btn size="x-small" color="green" variant="flat">set</v-btn>
-                      </td>
-                    </tr>
-                    <tr>
-                      <th>Over Current Protection</th>
-                      <td @click="changeOCP" class="changeable">
-                        {{ formatNumber(device.overCurrentProtection) }}A
-                        <v-btn size="x-small" color="green" variant="flat">set</v-btn>
-                      </td>
-                    </tr>
-                    <tr>
-                      <th>Over Power Protection</th>
-                      <td @click="changeOPP" class="changeable">
-                        {{ formatNumber(device.overPowerProtection) }}W
-                        <v-btn size="x-small" color="green" variant="flat">set</v-btn>
-                      </td>
-                    </tr>
-                    <tr>
-                      <th>Over Temperature Protection</th>
-                      <td @click="changeOTP" class="changeable">
-                        {{ formatNumber(device.overTemperatureProtection) }}℃
-                        <v-btn size="x-small" color="green" variant="flat">set</v-btn>
-                      </td>
-                    </tr>
-                    <tr>
-                      <th>Low Voltage Protection</th>
-                      <td @click="changeLVP" class="changeable">
-                        {{ formatNumber(device.lowVoltageProtection) }}V
-                        <v-btn size="x-small" color="green" variant="flat">set</v-btn>
-                      </td>
-                    </tr>
-                  </tbody>
-                </v-table>
+                <Protections :device="device" @change-ovp="changeOVP" @change-ocp="changeOCP" @change-opp="changeOPP" @change-otp="changeOTP" @change-lvp="changeLVP" />
               </v-window-item>
               <v-window-item value="program">
-                <div class="d-flex">
-                  <div class="flex-fill" style="margin-right: 10px">
-                    <v-textarea v-model="program" prepend-icon="mdi-code-block-parentheses" style="width: 100%" rows="10" auto-grow></v-textarea>
-                    <div class="text-right">
-                      <v-btn size="small">
-                        Examples
-                        <v-menu activator="parent">
-                          <v-list>
-                            <v-list-item @click="program = example.code" v-for="example in programExamples" :key="example.name" :title="example.name"></v-list-item>
-                          </v-list>
-                        </v-menu>
-                      </v-btn>
-                    </div>
-                  </div>
-                  <div style="width: 25em">
-                    <v-table density="compact">
-                      <tbody>
-                        <tr>
-                          <th>V(v)</th>
-                          <td>Set voltage to `v`</td>
-                        </tr>
-                        <tr>
-                          <th>V()</th>
-                          <td>Get current set voltage</td>
-                        </tr>
-                        <tr>
-                          <th>I(i)</th>
-                          <td>Set current to `i`</td>
-                        </tr>
-                        <tr>
-                          <th>I()</th>
-                          <td>Get current set current</td>
-                        </tr>
-                        <tr>
-                          <th>ON()</th>
-                          <td>Enable output</td>
-                        </tr>
-                        <tr>
-                          <th>OFF()</th>
-                          <td>Disable output</td>
-                        </tr>
-                        <tr>
-                          <th>SLEEP(ms)</th>
-                          <td>Sleep `ms`</td>
-                        </tr>
-                        <tr>
-                          <th>times(n, f)</th>
-                          <td>Run `f` for `n` times</td>
-                        </tr>
-                      </tbody>
-                    </v-table>
-                    <v-card variant="plain">
-                      <v-card-text>
-                        The program is executed once and for all. It then builds a command queue. The actual output control is then performed according to the command queue.
-                      </v-card-text>
-                    </v-card>
-                  </div>
-                </div>
-                <v-btn color="green" @click="runProgram" v-if="!programRunning">Run</v-btn>
-                <v-btn color="red" @click="abortProgram" v-else>Abort ({{ programRemaining }} remains)</v-btn>
+                <Program v-model:program="program" :program-examples="programExamples" :program-running="programRunning" :program-remaining="programRemaining" @run-program="runProgram" @abort-program="abortProgram" />
               </v-window-item>
               <v-window-item value="history">
-                <v-row>
-                  <v-col>
-                    <v-btn @click="downloadHistory" :disabled="!history.length" color="deep-orange-darken-1" prepend-icon="mdi-download-box">Download</v-btn>
-                  </v-col>
-                  <v-col style="text-align: right">
-                    <v-btn @click="resetHistory" :disabled="!history.length" color="blue-grey-lighten-2" prepend-icon="mdi-close-box">Reset</v-btn>
-                  </v-col>
-                </v-row>
-                <v-data-table density="compact" :headers="historyTableHeaders" :items="history" :items-per-page="10">
-                  <template v-slot:item.time="{ item }">
-                    {{ formatDateTime(item.time) }}
-                  </template>
-                  <template v-slot:item.v="{ item }">
-                    {{ formatNumber(item.v) }}V
-                  </template>
-                  <template v-slot:item.i="{ item }">
-                    {{ formatNumber(item.i) }}A
-                  </template>
-                  <template v-slot:item.p="{ item }">
-                    {{ formatNumber(item.p) }}W
-                  </template>
-                </v-data-table>
+                <History :history="history" :history-table-headers="historyTableHeaders" @download-history="downloadHistory" @reset-history="resetHistory" />
               </v-window-item>
               <v-window-item value="settings">
-                <v-table density="compact" style="width: 30em">
-                  <tbody>
-                    <tr>
-                      <th>Brightness</th>
-                      <td @click="editBrightness()" class="changeable">
-                        {{ device.brightness }}
-                        <v-btn size="x-small" color="green" variant="flat">set</v-btn>
-                      </td>
-                    </tr>
-                    <tr>
-                      <th>Volume</th>
-                      <td @click="editVolume()" class="changeable">
-                        {{ device.volume }}
-                        <v-btn size="x-small" color="green" variant="flat">set</v-btn>
-                      </td>
-                    </tr>
-                  </tbody>
-                </v-table>
+                <Settings :device="device" @edit-brightness="editBrightness" @edit-volume="editVolume" />
               </v-window-item>
             </v-window>
           </v-card-text>
         </v-card>
+
       </v-container>
     </v-main>
 
@@ -1072,56 +549,16 @@ onMounted(() => {
       </div>
     </v-overlay>
 
-    <v-dialog width="auto" v-model="showNumberInput" id="numberInput">
-      <v-card :title="numberInput.title" v-if="numberInput">
-        <v-divider class="mt-3"></v-divider>
-        <v-card-text>
-          <div style="height: 100%; width: 100%; display: flex; flex-direction: column">
-            <div style="flex: 1">
-              <div v-html="numberInput.descriptionHtml" v-if="numberInput.descriptionHtml"></div>
-              <div v-else>
-                {{ numberInput.description || '' }}
-              </div>
-            </div>
-            <div id="numberInputting">
-              <span class="number" v-if="numberInput.input">{{ formatNumberForInput(numberInput.input) }}</span>
-              <span class="number" v-else style="color: rgba(0,0,0,.54);">{{ formatNumberForInput(numberInput.prev) }}</span>
-              <span class="unit">{{ numberInput.unit }}</span>
-            </div>
-            <table id="numberInput">
-              <tr>
-                <td><v-btn variant="tonal" class="" @click="numberInputButton">7</v-btn></td>
-                <td><v-btn variant="tonal" class="" @click="numberInputButton">8</v-btn></td>
-                <td><v-btn variant="tonal" class="" @click="numberInputButton">9</v-btn></td>
-                <td><v-btn variant="tonal" class="" @click="numberInputButton" v-show="numberInput.units[0]">{{ numberInput.units[0] }}</v-btn></td>
-              </tr>
-              <tr>
-                <td><v-btn variant="tonal" class="" @click="numberInputButton">4</v-btn></td>
-                <td><v-btn variant="tonal" class="" @click="numberInputButton">5</v-btn></td>
-                <td><v-btn variant="tonal" class="" @click="numberInputButton">6</v-btn></td>
-                <td><v-btn variant="tonal" class="" @click="numberInputButton" v-show="numberInput.units[1]">{{ numberInput.units[1] }}</v-btn></td>
-              </tr>
-              <tr>
-                <td><v-btn variant="tonal" class="" @click="numberInputButton">1</v-btn></td>
-                <td><v-btn variant="tonal" class="" @click="numberInputButton">2</v-btn></td>
-                <td><v-btn variant="tonal" class="" @click="numberInputButton">3</v-btn></td>
-                <td><v-btn variant="tonal" class="" @click="numberInputButton" v-show="numberInput.units[2]">{{ numberInput.units[2] }}</v-btn></td>
-              </tr>
-              <tr>
-                <td><v-btn variant="tonal" class="" @click="numberInputButton">0</v-btn></td>
-                <td><v-btn variant="tonal" class="" @click="numberInputButton">.</v-btn></td>
-                <td><v-btn variant="tonal" class="" @click="numberInputButton">&#x232B;</v-btn></td>
-                <td><v-btn variant="tonal" class="" @click="numberInputButton" v-show="numberInput.units[3]">{{ numberInput.units[3] }}</v-btn></td>
-              </tr>
-            </table>
-          </div>
-        </v-card-text>
-
-        <template v-slot:actions>
-          <v-btn class="ms-auto" text="Cancel" @click="showNumberInput = false"></v-btn>
-        </template>
-      </v-card>
-    </v-dialog>
+    <NumberInput
+      v-model="showNumberInput"
+      :title="numberInput.title"
+      :description="numberInput.description"
+      :description-html="numberInput.descriptionHtml"
+      :unit="numberInput.unit"
+      :units="numberInput.units"
+      :prev="numberInput.prev"
+      @input="onNumberInput"
+    />
   </v-app>
 </template>
 
@@ -1131,6 +568,9 @@ onMounted(() => {
   font-weight: 400;
   font-style: normal;
 }
+
+/* <uniquifier>: Use a unique and descriptive class name */
+/* <weight>: Use a value from 100 to 900 */
 
 .noto-sans-jp-normal {
   font-family: 'Noto Sans JP', serif;
@@ -1227,7 +667,7 @@ p.note {
 
 .changeable:hover {
   cursor: pointer;
-  background: rgb(200, 200, 200, 0.5);
+  background: rgb(200 200 200 / 50%);
 }
 
 .changeable:hover .v-btn {
