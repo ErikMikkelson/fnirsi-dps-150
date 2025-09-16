@@ -4,13 +4,8 @@ import {
   CURRENT_SET,
   DPS150,
   VOLTAGE_SET,
-} from './dps-150.ts';
-
-async function sleep(n: number) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, n);
-  });
-}
+} from './dps-150';
+import { sleep } from './utils';
 
 export class Backend {
   port: SerialPort | null = null;

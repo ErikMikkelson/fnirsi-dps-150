@@ -16,7 +16,7 @@ import {
   BRIGHTNESS,
   VOLUME,
 } from './dps-150.ts';
-import { functionWithTimeout } from '../utils.ts';
+import { functionWithTimeout } from './utils.ts';
 import type { Backend as MyWorker } from './worker';
 
 // @ts-ignore

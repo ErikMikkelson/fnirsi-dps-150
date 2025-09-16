@@ -10,7 +10,7 @@ import {
 import {
   functionWithTimeout,
   sleep,
-} from '../utils';
+} from '../src/utils';
 
 describe('utils.js (browser environment)', () => {
   describe('sleep()', () => {

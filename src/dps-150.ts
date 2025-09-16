@@ -1,8 +1,4 @@
-async function sleep(n: number): Promise<void> {
-	return new Promise((resolve) => {
-		setTimeout(resolve, n);
-	});
-}
+import { sleep } from './utils';
 
 const HEADER_INPUT  = 0xf0; // 240
 const HEADER_OUTPUT = 0xf1; // 241
