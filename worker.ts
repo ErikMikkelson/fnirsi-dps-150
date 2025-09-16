@@ -4,7 +4,7 @@ import {
   CURRENT_SET,
   DPS150,
   VOLTAGE_SET,
-} from './dps-150.ts';
+} from '../dps-150';
 
 async function sleep(n: number) {
   return new Promise((resolve) => {

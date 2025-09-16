@@ -32,7 +32,7 @@ export class MockSerialPort {
     this.openOptions = options;
     this.isOpen = true;
     this.readerCancelled = false;
-    
+
     // WritableStreamのモック
     this._writable = {
       getWriter: () => {
@@ -54,13 +54,13 @@ export class MockSerialPort {
             if (this.readerCancelled) {
               return { done: true };
             }
-            
+
             // readQueueからデータを取り出す
             if (this.readQueue.length > 0) {
               const value = this.readQueue.shift();
               return { value, done: false };
             }
-            
+
             // データがない場合は実際のReadableStreamのように待機
             return new Promise((resolve) => {
               this._dataWaiters.push(resolve);
@@ -126,7 +126,7 @@ export class MockSerialPort {
 export const mockSerial = {
   ports: [] as MockSerialPort[],
   listeners: {} as { [key: string]: any[] },
-  
+
   addEventListener(event: string, callback: any) {
     if (!this.listeners[event]) {
       this.listeners[event] = [];
