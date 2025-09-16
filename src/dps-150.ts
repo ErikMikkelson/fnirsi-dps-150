@@ -1,4 +1,4 @@
-async function sleep(n) {
+async function sleep(n: number): Promise<void> {
 	return new Promise((resolve) => {
 		setTimeout(resolve, n);
 	});
@@ -58,15 +58,60 @@ const PROTECTION_STATES = [
 	"REP",
 ];
 
+interface DeviceData {
+  inputVoltage?: number;
+  outputVoltage?: number;
+  outputCurrent?: number;
+  outputPower?: number;
+  temperature?: number;
+  outputCapacity?: number;
+  outputEnergy?: number;
+  outputClosed?: boolean;
+  protectionState?: string;
+  mode?: "CC" | "CV";
+  modelName?: string;
+  hardwareVersion?: string;
+  firmwareVersion?: string;
+  upperLimitVoltage?: number;
+  upperLimitCurrent?: number;
+  setVoltage?: number;
+  setCurrent?: number;
+  group1setVoltage?: number;
+  group1setCurrent?: number;
+  group2setVoltage?: number;
+  group2setCurrent?: number;
+  group3setVoltage?: number;
+  group3setCurrent?: number;
+  group4setVoltage?: number;
+  group4setCurrent?: number;
+  group5setVoltage?: number;
+  group5setCurrent?: number;
+  group6setVoltage?: number;
+  group6setCurrent?: number;
+  overVoltageProtection?: number;
+  overCurrentProtection?: number;
+  overPowerProtection?: number;
+  overTemperatureProtection?: number;
+  lowVoltageProtection?: number;
+  brightness?: number;
+  volume?: number;
+  meteringClosed?: boolean;
+}
+
+export type DPS150Callback = (data: DeviceData) => void;
+
 export class DPS150 {
+	private port: SerialPort;
+	private callback: DPS150Callback;
+	private reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
 
 
-	constructor(port, callback) {
+	constructor(port: SerialPort, callback: DPS150Callback) {
 		this.port = port;
 		this.callback = callback;
 	}
 
-	async start() {
+	async start(): Promise<void> {
 		console.log('start', this.port);
 		await this.port.open({
 			baudRate: 115200,
@@ -80,15 +125,17 @@ export class DPS150 {
 		await this.initCommand();
 	}
 
-	async stop() {
+	async stop(): Promise<void> {
 		console.log('stop');
 		await this.sendCommand(HEADER_OUTPUT, CMD_XXX_193, 0, 0);
-		await this.reader.cancel();
+		if (this.reader) {
+			await this.reader.cancel();
+		}
 		await this.port.close();
 
 	}
 
-	async startReader() {
+	async startReader(): Promise<void> {
 		console.log('reading...');
 		let buffer = new Uint8Array();
 		while (this.port.readable) {
@@ -106,7 +153,7 @@ export class DPS150 {
 					b.set(value, buffer.length);
 					buffer = b;
 					for (let i = 0; i < buffer.length - 6; i++) {
-						if (buffer[i] === 0xf0 && buffer[i+1] === 0xa1) {
+						if (buffer[i] === HEADER_INPUT && buffer[i+1] === CMD_GET) {
 							const c1 = buffer[i];
 							const c2 = buffer[i+1];
 							const c3 = buffer[i+2];
@@ -122,13 +169,16 @@ export class DPS150 {
 								s6 += c5[j];
 							};
 							s6 %= 0x100;
-							buffer = buffer.subarray(i+4+c4);
 							if (s6 != c6) {
 								// console.log('checksum error', s6, c6, Array.from(c5).map(v => v.toString(16)).join(" "));
+								buffer = buffer.subarray(i+1);
+								i = -1; // restart loop
 								continue;
 							}
 							// console.log('readData', c1, c2, c3, c4, Array.from(c5).map(v => v.toString(16)).join(" "), c6, '==', s6);
-							this.parseData(c1, c2, c3, c4, c5, c6);
+							this.parseData(c1, c2, c3, c4, c5);
+							buffer = buffer.subarray(i+5+c4);
+							i = -1; // restart loop
 						}
 					}
 					// console.log('parseData', Array.from(buffer).map(v => v.toString(16)).join(" "));
@@ -142,7 +192,7 @@ export class DPS150 {
 		}
 	}
 
-	async initCommand() {
+	async initCommand(): Promise<void> {
 		await this.sendCommand(HEADER_OUTPUT, CMD_XXX_193, 0, 1); // CMD_1
 		// new int[5] { 9600, 19200, 38400, 57600, 115200 };
 		await this.sendCommand(HEADER_OUTPUT, CMD_XXX_176, 0, [9600, 19200, 38400, 57600, 115200].indexOf(115200) + 1); // CMD_13
@@ -153,7 +203,7 @@ export class DPS150 {
 		await this.getAll();
 	}
 
-	async sendCommand(c1, c2, c3, c5) {
+	async sendCommand(c1: number, c2: number, c3: number, c5: number | number[] | Uint8Array): Promise<void> {
 		/**
 		 * c1: 0xf0 (in) or 0xf1 (out)
 		 * c2: command
@@ -163,34 +213,41 @@ export class DPS150 {
 		 *
 		 */
 
+		let data: number[] | Uint8Array;
 		if (typeof c5 === 'number') {
-			c5 = [ c5 ];
+			data = [ c5 ];
+		} else {
+			data = c5;
 		}
 
-		const c4 = c5.length;
+		const c4 = data.length;
 		let c6 = c3 + c4;
 		for (let i = 0; i < c4; i++) {
-			c6 += c5[i];
+			c6 += data[i];
 		}
-		const c = new Uint8Array(c5.length + 5);
+		const c = new Uint8Array(data.length + 5);
 		c[0] = c1;
 		c[1] = c2;
 		c[2] = c3;
 		c[3] = c4;
-		for (let i = 0; i < c4; i++) {
-			c[4 + i] = c5[i];
+		if (data instanceof Uint8Array) {
+			c.set(data, 4);
+		} else {
+			for (let i = 0; i < c4; i++) {
+				c[4 + i] = data[i];
+			}
 		}
 		c[c.length - 1] = c6;
 		await this.sendCommandRaw(c);
 	}
 
-	async sendCommandFloat(c1, c2, c3, c5) {
+	async sendCommandFloat(c1: number, c2: number, c3: number, c5: number): Promise<void> {
 		const v = new DataView(new ArrayBuffer(4));
 		v.setFloat32(0, c5, true);
 		await this.sendCommand(c1, c2, c3, new Uint8Array(v.buffer));
 	}
 
-	async sendCommandRaw(command) {
+	async sendCommandRaw(command: Uint8Array): Promise<void> {
 		// console.log('sendCommand', Array.from(command).map(v => v.toString(16)).join(" "));
 		const writer = this.port.writable.getWriter();
 		try {
@@ -201,10 +258,9 @@ export class DPS150 {
 		}
 	}
 
-	parseData(c1, c2, c3, c4, c5) {
+	parseData(c1: number, c2: number, c3: number, c4: number, c5: Uint8Array): void {
 		const { callback } = this;
-		const view = new DataView(c5.buffer);
-		let v1, v2, v3;
+		const view = new DataView(c5.buffer, c5.byteOffset, c5.byteLength);
 		switch (c3) {
 			case 192: // input voltage
 				callback({ inputVoltage: view.getFloat32(0, true) });
@@ -229,8 +285,7 @@ export class DPS150 {
 				callback({ outputClosed: c5[0] === 1 });
 				break;
 			case 220: // protection
-				let d31 = c5[0];
-				callback({ protectionState: PROTECTION_STATES[d31] });
+				callback({ protectionState: PROTECTION_STATES[c5[0]] });
 				break;
 			case 221: // cc=0 or cv=1
 				callback({ mode: c5[0] === 0 ? "CC" : "CV" });
@@ -310,9 +365,11 @@ export class DPS150 {
 					});
 					*/
 					// dump unknwon data
+					/*
 					console.log(c5.length, {
 						d31, d33, d39, d40, d41, d42, d43
 					});
+					*/
 
 					callback({
 						inputVoltage: d1,
@@ -362,31 +419,31 @@ export class DPS150 {
 	}
 
 
-	async getAll() {
+	async getAll(): Promise<void> {
 		await this.sendCommand(HEADER_OUTPUT, CMD_GET, ALL, 0); // get all
 	}
 
-	async setFloatValue(type, value) {
+	async setFloatValue(type: number, value: number): Promise<void> {
 		await this.sendCommandFloat(HEADER_OUTPUT, CMD_SET, type, value);
 	}
 
-	async setByteValue(type, value) {
+	async setByteValue(type: number, value: number): Promise<void> {
 		await this.sendCommand(HEADER_OUTPUT, CMD_SET, type, value);
 	}
 
-	async enable() {
+	async enable(): Promise<void> {
 		await this.setByteValue(OUTPUT_ENABLE, 1);
 	}
 
-	async disable() {
+	async disable(): Promise<void> {
 		await this.setByteValue(OUTPUT_ENABLE, 0);
 	}
 
-	async startMetering() {
+	async startMetering(): Promise<void> {
 		await this.setByteValue(METERING_ENABLE, 1);
 	}
 
-	async stopMetering() {
+	async stopMetering(): Promise<void> {
 		await this.setByteValue(METERING_ENABLE, 0);
 	}
 }
