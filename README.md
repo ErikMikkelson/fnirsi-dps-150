@@ -1,4 +1,4 @@
-WebSerial / JavaScript implementation for FNIRSI - DPS-150 
+WebSerial / JavaScript implementation for FNIRSI - DPS-150
 =========================================================
 
 <img src="./docs/demo.png">
@@ -10,27 +10,24 @@ This is a simple implementation of the FNIRSI - DPS-150 protocol in JavaScript. 
 
 https://www.fnirsi.com/products/dps-150
 
-## FNIRSI - DPS-150 
+## FNIRSI - DPS-150
 
 The FNIRSI - DPS-150 is a CNC power supply working with USB-PD.
 
 This power supply can be controlled via USB. Officially, however, only software for Windows is provided.
 
-## Project File Structure
+## Project Architecture
 
-This project consists of the following main files and directories:
+This project has been refactored into a modern web application using Vue.js, TypeScript, and Vite. The architecture separates the user interface from the device communication logic.
 
-- **dps-150.js**  
-  JavaScript implementation of the FNIRSI DPS-150 protocol. Handles serial communication, command construction, and parsing.
-
-- **index.html**  
-  The main web application interface. Provides the UI for interacting with the power supply via the browser.
-
-- **script.js**  
-  Contains the frontend logic, including device connection, UI state management, and data visualization.
-
-- **worker.js**  
-  Runs as a Web Worker to handle background serial communication and device control, using Comlink for messaging.
+-   **`src/`**: The main source directory.
+    -   **`main.ts`**: The entry point of the Vue application.
+    -   **`App.vue`**: The root Vue component.
+    -   **`components/`**: Contains all Vue components for the UI.
+    -   **`store/device.ts`**: A [Pinia](https://pinia.vuejs.org/) store that manages the application state.
+    -   **`core/`**: Contains the core logic for device communication.
+        -   **`dps-150.ts`**: The low-level implementation of the FNIRSI DPS-150 communication protocol.
+        -   **`worker.ts`**: A Web Worker that handles all serial communication, preventing the UI from freezing. It uses [Comlink](https://github.com/GoogleChromeLabs/comlink) to communicate with the main thread.
 
 This structure separates protocol logic, UI, and background processing for maintainability and clarity.
 
@@ -48,28 +45,34 @@ config:
     textColor: '#333'
 ---
 sequenceDiagram
-    actor User as User
-    participant Frontend as Frontend (script.js)
-    participant Worker as Worker (worker.js)
-    participant Device as Device (DPS-150)
+    actor User
+    participant UI Thread (Vue/Pinia)
+    participant Worker Thread (Comlink)
+    participant Device (DPS-150)
 
-    User->>Frontend: UI operation (connect/get/set)
-    Frontend->>Worker: Send command via Comlink
-    Worker->>Device: Send command via Serial
-    Device-->>Worker: Response data (Serial)
-    Worker-->>Frontend: Response data via Comlink
-    Frontend-->>User: Update UI / Show data
+    User->>UI Thread (Vue/Pinia): UI operation (e.g., set voltage)
+    UI Thread (Vue/Pinia)->>Worker Thread (Comlink): Call worker method via Comlink proxy
+    Worker Thread (Comlink)->>Device (DPS-150): Send command via Web Serial
+    Device (DPS-150)-->>Worker Thread (Comlink): Response data (Serial)
+    Worker Thread (Comlink)-->>UI Thread (Vue/Pinia): Update store state with new data
+    UI Thread (Vue/Pinia)-->>User: UI automatically updates
 ```
 
 ## Getting Started
 
-To run this project locally, simply start a static file server in the project root. For example, using [serve](https://www.npmjs.com/package/serve):
+This project uses [Yarn](https://yarnpkg.com/) as the package manager.
 
-```sh
-npx serve .
-```
+1.  **Install dependencies:**
+    ```sh
+    yarn install
+    ```
 
-Then open the displayed local URL in Google Chrome.
+2.  **Run the development server:**
+    ```sh
+    yarn dev
+    ```
+
+Then open the displayed local URL in a browser that supports the [Web Serial API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Serial_API) (e.g., Google Chrome, Edge, Opera).
 
 ## Protocol
 
