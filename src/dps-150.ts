@@ -1,4 +1,4 @@
-async function sleep(n: number) {
+async function sleep(n) {
 	return new Promise((resolve) => {
 		setTimeout(resolve, n);
 	});
@@ -59,11 +59,9 @@ const PROTECTION_STATES = [
 ];
 
 export class DPS150 {
-	port: any; // SerialPort;
-	callback: (data: any) => void;
-	reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
 
-	constructor(port: any /*SerialPort*/, callback: (data: any) => void) {
+
+	constructor(port, callback) {
 		this.port = port;
 		this.callback = callback;
 	}
@@ -85,9 +83,7 @@ export class DPS150 {
 	async stop() {
 		console.log('stop');
 		await this.sendCommand(HEADER_OUTPUT, CMD_XXX_193, 0, 0);
-		if (this.reader) {
-			await this.reader.cancel();
-		}
+		await this.reader.cancel();
 		await this.port.close();
 
 	}
@@ -132,7 +128,7 @@ export class DPS150 {
 								continue;
 							}
 							// console.log('readData', c1, c2, c3, c4, Array.from(c5).map(v => v.toString(16)).join(" "), c6, '==', s6);
-							this.parseData(c1, c2, c3, c4, c5);
+							this.parseData(c1, c2, c3, c4, c5, c6);
 						}
 					}
 					// console.log('parseData', Array.from(buffer).map(v => v.toString(16)).join(" "));
@@ -157,54 +153,55 @@ export class DPS150 {
 		await this.getAll();
 	}
 
-	async sendCommand(c1: number, c2: number, c3: number, c5: number | number[]) {
+	async sendCommand(c1, c2, c3, c5) {
+		/**
+		 * c1: 0xf0 (in) or 0xf1 (out)
+		 * c2: command
+		 *   177: set
+		 *   161: get
+		 *
+		 *
+		 */
+
 		if (typeof c5 === 'number') {
 			c5 = [ c5 ];
 		}
 
 		const c4 = c5.length;
-		// Checksum is the sum of type, length, and data bytes
 		let c6 = c3 + c4;
 		for (let i = 0; i < c4; i++) {
 			c6 += c5[i];
 		}
-		const c = new Uint8Array(c5.length + 6);
-		c[0] = 0xfa;
-		c[1] = c1;
-		c[2] = c2;
-		c[3] = c3;
-		c[4] = c4;
+		const c = new Uint8Array(c5.length + 5);
+		c[0] = c1;
+		c[1] = c2;
+		c[2] = c3;
+		c[3] = c4;
 		for (let i = 0; i < c4; i++) {
-			c[5 + i] = c5[i];
+			c[4 + i] = c5[i];
 		}
-		c[c.length - 1] = c6 % 256;
+		c[c.length - 1] = c6;
 		await this.sendCommandRaw(c);
 	}
 
-	async sendCommandFloat(c1: number, c2: number, c3: number, value: number) {
-		const b = new ArrayBuffer(4);
-		const v = new DataView(b);
-		v.setFloat32(0, value, true);
-		const c5 = [ v.getUint8(0), v.getUint8(1), v.getUint8(2), v.getUint8(3) ];
-		await this.sendCommand(c1, c2, c3, c5);
+	async sendCommandFloat(c1, c2, c3, c5) {
+		const v = new DataView(new ArrayBuffer(4));
+		v.setFloat32(0, c5, true);
+		await this.sendCommand(c1, c2, c3, new Uint8Array(v.buffer));
 	}
 
-	async sendCommandRaw(c: Uint8Array) {
-		if (!this.port || !this.port.writable) {
-			return;
-		}
+	async sendCommandRaw(command) {
+		// console.log('sendCommand', Array.from(command).map(v => v.toString(16)).join(" "));
 		const writer = this.port.writable.getWriter();
 		try {
-			// console.log('sendCommandRaw', Array.from(c).map(v => v.toString(16)).join(" "));
-			await writer.write(c);
-		} catch (e) {
-			console.error(e);
+			await writer.write(command);
+			await sleep(50);
 		} finally{
 			writer.releaseLock();
 		}
 	}
 
-	parseData(c1: number, c2: number, c3: number, c4: number, c5: Uint8Array) {
+	parseData(c1, c2, c3, c4, c5) {
 		const { callback } = this;
 		const view = new DataView(c5.buffer);
 		let v1, v2, v3;
@@ -369,11 +366,11 @@ export class DPS150 {
 		await this.sendCommand(HEADER_OUTPUT, CMD_GET, ALL, 0); // get all
 	}
 
-	async setFloatValue(type: number, value: number) {
+	async setFloatValue(type, value) {
 		await this.sendCommandFloat(HEADER_OUTPUT, CMD_SET, type, value);
 	}
 
-	async setByteValue(type: number, value: number) {
+	async setByteValue(type, value) {
 		await this.sendCommand(HEADER_OUTPUT, CMD_SET, type, value);
 	}
 

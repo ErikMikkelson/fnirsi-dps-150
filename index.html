@@ -16,9 +16,407 @@
 
   <script src="https://cdn.jsdelivr.net/npm/plotly.js@2.35.2/dist/plotly.min.js" defer></script>
   <script type="module" src="/src/main.ts"></script>
+
+  <link rev="made" href="mailto:cho45@lowreal.net" />
+  <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
+
+  <style>
+    .monomaniac-one-regular {
+      font-family: "Monomaniac One", sans-serif;
+      font-weight: 400;
+      font-style: normal;
+    }
+
+    /* <uniquifier>: Use a unique and descriptive class name */
+    /* <weight>: Use a value from 100 to 900 */
+
+    .noto-sans-jp-normal {
+      font-family: "Noto Sans JP", serif;
+      font-optical-sizing: auto;
+      font-weight: 600;
+      font-style: normal;
+    }
+
+    body {
+      font-family: "Noto Sans JP", serif;
+      font-optical-sizing: auto;
+      font-weight: 600;
+      font-style: normal;
+    }
+
+    .main-view {
+      font-family: "Monomaniac One", sans-serif;
+      font-weight: 400;
+      font-style: normal;
+      font-size: 80px;
+      text-align: right;
+      line-height: 1;
+      padding: 20px;
+    }
+
+    .main-view .set {
+      font-size: 50%;
+    }
+
+    #app {
+      margin: 0 auto;
+    }
+
+    p.note {
+      margin: 1em 0;
+      font-size: 90%;
+      max-width: 30em;
+      color: #333;
+    }
+
+    .main-view .unit {
+      font-size: 50%;
+    }
+
+    .voltage {
+      color: oklch(63.11% 0.1964 139.76)
+    }
+
+    .current {
+      color: oklch(63.11% 0.1964 26.48)
+    }
+
+    .voltage.v-chip {
+      background: oklch(63.11% 0.1964 139.76);
+      color: white;
+    }
+
+    .current.v-chip {
+      background: oklch(63.11% 0.1964 26.48);
+      color: white;
+    }
+
+    .v-chip {
+      margin-left: 5px;
+    }
+
+    .power {
+      color: oklch(63.11% 0.1964 230.46)
+    }
+
+    .mode {
+      font-size: 50%;
+    }
+
+    .info {
+      font-size: 25%;
+    }
+
+    .enabled {
+      background: repeating-linear-gradient(-45deg, #ffffff, #ffffff 5px, #fce6ba 5px, #fce6ba 10px);
+    }
+
+    .v-app-bar .v-btn {
+      margin: 10px;
+    }
+
+    .changeable {
+      cursor: pointer;
+    }
+
+    .changeable .v-btn {
+      visibility: hidden;
+    }
+
+    .changeable:hover {
+      cursor: pointer;
+      background: rgb(200, 200, 200, 0.5);
+    }
+
+    .changeable:hover .v-btn {
+      visibility: visible;
+    }
+
+    .groups .changeable.changed {
+      background: #ffcccc;
+    }
+
+    #numberInputting {
+      font-size: 200%;
+      text-align: right;
+      font-weight: bold;
+      padding: 20px 2px;
+    }
+
+    #numberInput {
+      width: 100%;
+      table-layout: fixed;
+    }
+
+    #numberInput .v-btn {
+      margin: 0;
+      min-width: auto;
+      min-height: 10vh;
+      width: 100%;
+      box-sizing: border-box;
+      background: #efefef;
+      font-size: 200%;
+      text-transform: none;
+    }
+  </style>
 </head>
-<link rev="made" href="mailto:cho45@lowreal.net" />
-<link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
+
+<body>
+  <div id="app">
+    <v-app>
+      <v-app-bar color="primary" density="compact">
+        <v-app-bar-title>FNIRSI DPS-150</v-app-bar-title>
+        <v-btn id="select-device">Connect</v-btn>
+        <v-btn id="disconnect-device" style="display: none">Disconnect</v-btn>
+      </v-app-bar>
+
+      <v-main>
+        <v-container>
+          <div v-if="!connected">
+            <p>
+              Web Serial APIに対応したブラウザ（Google Chrome, Edge, Opera）で、<br>
+              FNIRSI DPS-150をUSBで接続した状態で "Connect" ボタンを押してください。
+            </p>
+            <p>
+              Please use a browser that supports the Web Serial API (Google Chrome, Edge, Opera),<br>
+              connect the FNIRSI DPS-150 via USB, and press the "Connect" button.
+            </p>
+          </div>
+          <div v-else>
+            <v-row>
+              <v-col cols="12" md="6">
+                <v-card :class="{ enabled: state.outputClosed }">
+                  <v-card-title>Output</v-card-title>
+                  <v-card-text>
+                    <div class="main-view">
+                      <div class="changeable" @click="() => changeNumber('setVoltage')">
+                        <span class="set voltage">{{ state.setVoltage?.toFixed(2) }}<span class="unit">V</span></span>
+                        <v-btn icon="mdi-pencil" size="small"></v-btn>
+                      </div>
+                      <div class="voltage">
+                        {{ state.outputVoltage?.toFixed(2) }}<span class="unit">V</span>
+                        <v-chip class="mode voltage" v-if="state.mode">{{ state.mode }}</v-chip>
+                        <v-chip class="protection-state" v-if="state.protectionState">{{ state.protectionState
+                          }}</v-chip>
+                      </div>
+                    </div>
+                    <div class="main-view">
+                      <div class="changeable" @click="() => changeNumber('setCurrent')">
+                        <span class="set current">{{ state.setCurrent?.toFixed(3) }}<span class="unit">A</span></span>
+                        <v-btn icon="mdi-pencil" size="small"></v-btn>
+                      </div>
+                      <div class="current">
+                        {{ state.outputCurrent?.toFixed(3) }}<span class="unit">A</span>
+                      </div>
+                    </div>
+                    <div class="main-view">
+                      <div class="power">
+                        {{ state.outputPower?.toFixed(2) }}<span class="unit">W</span>
+                      </div>
+                    </div>
+                  </v-card-text>
+                  <v-card-actions>
+                    <v-btn v-if="!state.outputClosed" @click="enable" color="success" size="large">Enable</v-btn>
+                    <v-btn v-if="state.outputClosed" @click="disable" color="error" size="large">Disable</v-btn>
+                  </v-card-actions>
+                </v-card>
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-card>
+                  <v-card-title>
+                    Graph
+                  </v-card-title>
+                  <v-card-text>
+                    <div id="plot"></div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+            </v-row>
+
+            <v-row>
+              <v-col cols="12" md="6">
+                <v-card>
+                  <v-card-title>
+                    Groups
+                  </v-card-title>
+                  <v-card-text class="groups">
+                    <v-list>
+                      <v-list-item v-for="i in 6" :key="i" @click="() => selectGroup(i)"
+                        :active="state.selectedGroup == i">
+                        <v-list-item-title>Group {{ i }}</v-list-item-title>
+                        <v-list-item-subtitle>
+                          <div class="changeable" :class="{ changed: isGroupChanged(i) }"
+                            @click.stop="() => changeNumber(`group${i}setVoltage`)">
+                            {{ state[`group${i}setVoltage`]?.toFixed(2) }}V
+                            <v-btn icon="mdi-pencil" size="x-small"></v-btn>
+                          </div>
+                          <div class="changeable" :class="{ changed: isGroupChanged(i) }"
+                            @click.stop="() => changeNumber(`group${i}setCurrent`)">
+                            {{ state[`group${i}setCurrent`]?.toFixed(3) }}A
+                            <v-btn icon="mdi-pencil" size="x-small"></v-btn>
+                          </div>
+                        </v-list-item-subtitle>
+                      </v-list-item>
+                    </v-list>
+                  </v-card-text>
+                  <v-card-actions>
+                    <v-btn @click="saveGroup">Save</v-btn>
+                  </v-card-actions>
+                </v-card>
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-card>
+                  <v-card-title>
+                    Protections
+                  </v-card-title>
+                  <v-card-text>
+                    <v-list>
+                      <v-list-item>
+                        <v-list-item-title>Over Voltage Protection (OVP)</v-list-item-title>
+                        <v-list-item-subtitle class="changeable" @click="() => changeNumber('overVoltageProtection')">
+                          {{ state.overVoltageProtection?.toFixed(2) }}V
+                          <v-btn icon="mdi-pencil" size="x-small"></v-btn>
+                        </v-list-item-subtitle>
+                      </v-list-item>
+                      <v-list-item>
+                        <v-list-item-title>Over Current Protection (OCP)</v-list-item-title>
+                        <v-list-item-subtitle class="changeable" @click="() => changeNumber('overCurrentProtection')">
+                          {{ state.overCurrentProtection?.toFixed(3) }}A
+                          <v-btn icon="mdi-pencil" size="x-small"></v-btn>
+                        </v-list-item-subtitle>
+                      </v-list-item>
+                      <v-list-item>
+                        <v-list-item-title>Over Power Protection (OPP)</v-list-item-title>
+                        <v-list-item-subtitle class="changeable" @click="() => changeNumber('overPowerProtection')">
+                          {{ state.overPowerProtection?.toFixed(2) }}W
+                          <v-btn icon="mdi-pencil" size="x-small"></v-btn>
+                        </v-list-item-subtitle>
+                      </v-list-item>
+                      <v-list-item>
+                        <v-list-item-title>Over Temperature Protection (OTP)</v-list-item-title>
+                        <v-list-item-subtitle class="changeable"
+                          @click="() => changeNumber('overTemperatureProtection')">
+                          {{ state.overTemperatureProtection?.toFixed(0) }}℃
+                          <v-btn icon="mdi-pencil" size="x-small"></v-btn>
+                        </v-list-item-subtitle>
+                      </v-list-item>
+                      <v-list-item>
+                        <v-list-item-title>Low Voltage Protection (LVP)</v-list-item-title>
+                        <v-list-item-subtitle class="changeable" @click="() => changeNumber('lowVoltageProtection')">
+                          {{ state.lowVoltageProtection?.toFixed(2) }}V
+                          <v-btn icon="mdi-pencil" size="x-small"></v-btn>
+                        </v-list-item-subtitle>
+                      </v-list-item>
+                    </v-list>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+            </v-row>
+
+            <v-row>
+              <v-col cols="12" md="6">
+                <v-card>
+                  <v-card-title>
+                    System
+                  </v-card-title>
+                  <v-card-text>
+                    <v-list>
+                      <v-list-item>
+                        <v-list-item-title>Brightness</v-list-item-title>
+                        <v-list-item-subtitle>
+                          <v-slider v-model="state.brightness" @update:model-value="setBrightness" min="0" max="100"
+                            step="10" thumb-label></v-slider>
+                        </v-list-item-subtitle>
+                      </v-list-item>
+                      <v-list-item>
+                        <v-list-item-title>Volume</v-list-item-title>
+                        <v-list-item-subtitle>
+                          <v-slider v-model="state.volume" @update:model-value="setVolume" min="0" max="100" step="10"
+                            thumb-label></v-slider>
+                        </v-list-item-subtitle>
+                      </v-list-item>
+                    </v-list>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-card>
+                  <v-card-title>
+                    Information
+                  </v-card-title>
+                  <v-card-text>
+                    <v-list>
+                      <v-list-item>
+                        <v-list-item-title>Input Voltage</v-list-item-title>
+                        <v-list-item-subtitle>{{ state.inputVoltage?.toFixed(2) }}V</v-list-item-subtitle>
+                      </v-list-item>
+                      <v-list-item>
+                        <v-list-item-title>Temperature</v-list-item-title>
+                        <v-list-item-subtitle>{{ state.temperature?.toFixed(1) }}℃</v-list-item-subtitle>
+                      </v-list-item>
+                      <v-list-item>
+                        <v-list-item-title>Model</v-list-item-title>
+                        <v-list-item-subtitle>{{ state.modelName }}</v-list-item-subtitle>
+                      </v-list-item>
+                      <v-list-item>
+                        <v-list-item-title>Hardware Version</v-list-item-title>
+                        <v-list-item-subtitle>{{ state.hardwareVersion }}</v-list-item-subtitle>
+                      </v-list-item>
+                      <v-list-item>
+                        <v-list-item-title>Firmware Version</v-list-item-title>
+                        <v-list-item-subtitle>{{ state.firmwareVersion }}</v-list-item-subtitle>
+                      </v-list-item>
+                    </v-list>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+            </v-row>
+          </div>
+        </v-container>
+      </v-main>
+
+      <v-dialog v-model="numberInputDialog" max-width="500">
+        <v-card>
+          <v-card-title>
+            Set {{ editingTarget }}
+          </v-card-title>
+          <v-card-text>
+            <div id="numberInputting">{{ numberInputting }}</div>
+            <table id="numberInput">
+              <tr>
+                <td><v-btn @click="() => inputNumber(7)">7</v-btn></td>
+                <td><v-btn @click="() => inputNumber(8)">8</v-btn></td>
+                <td><v-btn @click="() => inputNumber(9)">9</v-btn></td>
+              </tr>
+              <tr>
+                <td><v-btn @click="() => inputNumber(4)">4</v-btn></td>
+                <td><v-btn @click="() => inputNumber(5)">5</v-btn></td>
+                <td><v-btn @click="() => inputNumber(6)">6</v-btn></td>
+              </tr>
+              <tr>
+                <td><v-btn @click="() => inputNumber(1)">1</v-btn></td>
+                <td><v-btn @click="() => inputNumber(2)">2</v-btn></td>
+                <td><v-btn @click="() => inputNumber(3)">3</v-btn></td>
+              </tr>
+              <tr>
+                <td><v-btn @click="() => inputNumber('.')">.</v-btn></td>
+                <td><v-btn @click="() => inputNumber(0)">0</v-btn></td>
+                <td><v-btn @click="() => inputNumber('C')">C</v-btn></td>
+              </tr>
+            </table>
+          </v-card-text>
+          <v-card-actions>
+            <v-btn color="primary" @click="setNumber">Set</v-btn>
+            <v-btn @click="numberInputDialog = false">Cancel</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+    </v-app>
+  </div>
+</body>
+
+</html>
+
 
 <style>
   .monomaniac-one-regular {
