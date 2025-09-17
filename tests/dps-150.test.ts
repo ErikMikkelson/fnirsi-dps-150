@@ -588,7 +588,10 @@ describe('DPS150', () => {
     });
 
     it('複数のパケットを連続して処理する', async () => {
-      dps.startReader();
+      const readerPromise = dps.startReader();
+      // Wait for reader to be set up
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
       // Clear any callbacks from initialization
       callback.mockClear();
 
@@ -599,13 +602,19 @@ describe('DPS150', () => {
       mockPort.pushReadData(voltagePacket);
       mockPort.pushReadData(temperaturePacket);
 
+      // Wait for processing
+      await new Promise(resolve => setTimeout(resolve, 10));
+
       expect(callback).toHaveBeenCalledTimes(2);
       expect(callback).toHaveBeenNthCalledWith(1, { inputVoltage: 15.0 });
       expect(callback).toHaveBeenNthCalledWith(2, { temperature: 25.5 });
     });
 
     it('不正なチェックサムのパケットを適切にスキップする', async () => {
-      dps.startReader();
+      const readerPromise = dps.startReader();
+      // Wait for reader to be set up
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
       // Clear any callbacks from initialization
       callback.mockClear();
 
@@ -621,13 +630,19 @@ describe('DPS150', () => {
 
       mockPort.pushReadData(combinedData);
 
+      // Wait for processing
+      await new Promise(resolve => setTimeout(resolve, 10));
+
       // 修正後：不正なパケットはスキップされ、有効なパケットのみ処理される
       expect(callback).toHaveBeenCalledTimes(1);
       expect(callback).toHaveBeenCalledWith({ temperature: 30.0 });
     });
 
     it('単独の不正なチェックサムパケットが処理される', async () => {
-      dps.startReader();
+      const readerPromise = dps.startReader();
+      // Wait for reader to be set up
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
       // Clear any callbacks from initialization
       callback.mockClear();
 
@@ -637,12 +652,18 @@ describe('DPS150', () => {
 
       mockPort.pushReadData(invalidPacket);
 
+      // Wait for processing
+      await new Promise(resolve => setTimeout(resolve, 10));
+
       // 不正なパケットなのでコールバックは呼ばれない（正しい動作）
       expect(callback).not.toHaveBeenCalled();
 
       // その後、有効なパケットを送信すれば正常に処理される
       const validPacket = createFloatResponsePacket(196, 25.0);
       mockPort.pushReadData(validPacket);
+
+      // Wait for processing
+      await new Promise(resolve => setTimeout(resolve, 10));
 
       expect(callback).toHaveBeenCalledTimes(1);
       expect(callback).toHaveBeenCalledWith({ temperature: 25.0 });

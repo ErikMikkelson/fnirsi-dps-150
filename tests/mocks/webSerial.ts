@@ -10,6 +10,7 @@ export class MockSerialPort extends EventTarget implements SerialPort {
   _reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
   _writer: WritableStreamDefaultWriter<Uint8Array> | undefined;
   _dataWaiters: ((result: ReadableStreamReadResult<Uint8Array>) => void)[];
+  private _controller: ReadableStreamDefaultController<Uint8Array> | undefined;
 
   // WireMock-style response expectations
   private responseStubs: Array<{
@@ -43,17 +44,18 @@ export class MockSerialPort extends EventTarget implements SerialPort {
   }
 
   get readable(): ReadableStream<Uint8Array> {
-    // Create a new ReadableStream for each access to avoid locking issues
+    // Always create a new ReadableStream to avoid locking issues between tests
     const stream = new ReadableStream({
       start: (controller) => {
         // Store controller on the mock instance so we can push data from tests
-        (this as any)._controller = controller;
+        this._controller = controller;
       },
       pull: (controller) => {
         // No-op for mock
       },
       cancel: (reason) => {
         this.readerCancelled = true;
+        this._controller = undefined;
         // console.log('Stream cancelled:', reason);
       }
     });
@@ -118,6 +120,7 @@ export class MockSerialPort extends EventTarget implements SerialPort {
     this.readQueue = [];
     this.readerCancelled = false;
     this._dataWaiters = [];
+    this._controller = undefined;
   }
 
   async open(options: any) {
@@ -139,13 +142,14 @@ export class MockSerialPort extends EventTarget implements SerialPort {
     this.readerCancelled = true;
 
     // Close the readable stream controller if it exists
-    if ((this as any)._controller) {
+    if (this._controller) {
       try {
-        (this as any)._controller.close();
+        this._controller.close();
       } catch (e) {
         // Ignore if already closing
       }
     }
+    this._controller = undefined;
 
     this.isClosing = false;
   }
@@ -266,8 +270,8 @@ export class MockSerialPort extends EventTarget implements SerialPort {
 
   // テスト用ヘルパーメソッド
   pushReadData(data: Uint8Array) {
-    if (this.isOpen && (this as any)._controller) {
-      (this as any)._controller.enqueue(data);
+    if (this.isOpen && this._controller) {
+      this._controller.enqueue(data);
     }
   }
 
