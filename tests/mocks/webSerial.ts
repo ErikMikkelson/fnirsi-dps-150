@@ -50,7 +50,7 @@ export class MockSerialPort extends EventTarget implements SerialPort {
         // Real hardware may reject writes to closed ports, but for testing we capture all attempts
         const data = new Uint8Array(chunk);
         this.writtenData.push(data);
-        
+
         // Auto-respond to GET commands during initialization
         this.handleAutoResponse(data);
       },
@@ -80,7 +80,7 @@ export class MockSerialPort extends EventTarget implements SerialPort {
   }
 
   // WireMock-style API methods
-  
+
   /**
    * Set up a response for when a specific command is received
    * @param commandMatcher Function to match incoming commands
@@ -114,7 +114,7 @@ export class MockSerialPort extends EventTarget implements SerialPort {
       if (parameter !== undefined && command[3] !== parameter) return false;
       return true;
     };
-    
+
     return this.whenReceiving(matcher);
   }
 
@@ -124,13 +124,13 @@ export class MockSerialPort extends EventTarget implements SerialPort {
   setupDefaultResponses(): void {
     // MODEL_NAME (222)
     this.expectCommand(0x01, 222).respondWith(() => this.createStringResponseInternal(222, "DPS-150"));
-    
+
     // HARDWARE_VERSION (223)
     this.expectCommand(0x01, 223).respondWith(() => this.createStringResponseInternal(223, "1.0"));
-    
+
     // FIRMWARE_VERSION (224)
     this.expectCommand(0x01, 224).respondWith(() => this.createStringResponseInternal(224, "2.3"));
-    
+
     // ALL data (255)
     this.expectCommand(0x01, 255).respondWith(() => this.createAllResponse());
   }
@@ -216,27 +216,27 @@ export class MockSerialPort extends EventTarget implements SerialPort {
     // Find a matching stub for this command
     for (let i = 0; i < this.responseStubs.length; i++) {
       const stub = this.responseStubs[i];
-      
+
       // Skip if this is a once-only stub that's already been used
       if (stub.once && stub.used) continue;
-      
+
       // Check if this stub matches the command
       if (stub.matcher(commandData)) {
         // Mark as used if it's a once-only stub
         if (stub.once) {
           stub.used = true;
         }
-        
+
         // Use queueMicrotask to avoid issues with fake timers
         queueMicrotask(() => {
           if (this.isOpen) {
-            const response = typeof stub.response === 'function' 
-              ? stub.response() 
+            const response = typeof stub.response === 'function'
+              ? stub.response()
               : stub.response;
             this.pushReadData(response);
           }
         });
-        
+
         return; // Stop after first match
       }
     }
@@ -253,14 +253,14 @@ export class MockSerialPort extends EventTarget implements SerialPort {
     packet[2] = type;
     packet[3] = data.length;
     packet.set(data, 4);
-    
+
     // Calculate checksum
     let checksum = type + data.length;
     for (let i = 0; i < data.length; i++) {
       checksum += data[i];
     }
     packet[4 + data.length] = checksum % 256;
-    
+
     return packet;
   }
 
@@ -272,14 +272,14 @@ export class MockSerialPort extends EventTarget implements SerialPort {
     packet[2] = type;
     packet[3] = data.length;
     packet.set(data, 4);
-    
+
     // Calculate checksum
     let checksum = type + data.length;
     for (let i = 0; i < data.length; i++) {
       checksum += data[i];
     }
     packet[4 + data.length] = checksum % 256;
-    
+
     return packet;
   }
 
@@ -291,19 +291,19 @@ export class MockSerialPort extends EventTarget implements SerialPort {
     packet[1] = 0xa1; // CMD_GET
     packet[2] = 255;  // ALL
     packet[3] = dataSize;
-    
+
     // Fill with some mock data (zeros for simplicity)
     for (let i = 4; i < 4 + dataSize; i++) {
       packet[i] = 0;
     }
-    
+
     // Calculate checksum
     let checksum = 255 + dataSize;
     for (let i = 4; i < 4 + dataSize; i++) {
       checksum += packet[i];
     }
     packet[4 + dataSize] = checksum % 256;
-    
+
     return packet;
   }
 

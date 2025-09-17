@@ -118,48 +118,48 @@ describe('DPS150', () => {
     it('can set up custom responses for specific commands', async () => {
       // Clear default responses and set up custom ones
       mockPort.clearStubs();
-      
+
       // Set up a custom response for model name
-      mockPort.expectCommand(0x01, 222).respondWith(() => 
+      mockPort.expectCommand(0x01, 222).respondWith(() =>
         mockPort.createStringResponse(222, "CUSTOM-DPS")
       );
-      
+
       // Set up a custom response for voltage reading
       mockPort.whenReceiving((cmd) => {
         return cmd.length >= 4 && cmd[2] === 0x01 && cmd[3] === 193;
       }).respondWith(
         createFloatResponsePacket(193, 12.5)
       );
-      
+
       const startPromise = dps.start();
       await vi.advanceTimersByTimeAsync(100);
       await startPromise;
-      
+
       // Test that we got the custom model name during initialization
       const writtenData = mockPort.getWrittenData();
-      expect(writtenData.some(data => 
+      expect(writtenData.some(data =>
         data[2] === 0x01 && data[3] === 222
       )).toBe(true);
     });
 
     it('supports one-time responses', async () => {
       mockPort.clearStubs();
-      
+
       // Set up a one-time response
-      mockPort.expectCommand(0x01, 222).respondWith(() => 
-        mockPort.createStringResponse(222, "FIRST-CALL"), 
+      mockPort.expectCommand(0x01, 222).respondWith(() =>
+        mockPort.createStringResponse(222, "FIRST-CALL"),
         true  // once = true
       );
-      
+
       // Set up a default response for subsequent calls
-      mockPort.expectCommand(0x01, 222).respondWith(() => 
+      mockPort.expectCommand(0x01, 222).respondWith(() =>
         mockPort.createStringResponse(222, "SUBSEQUENT-CALLS")
       );
-      
+
       const startPromise = dps.start();
       await vi.advanceTimersByTimeAsync(100);
       await startPromise;
-      
+
       // The first call should have used the one-time response
       // Subsequent calls would use the default response
       expect(mockPort.getWrittenData().length).toBeGreaterThan(0);
@@ -167,15 +167,15 @@ describe('DPS150', () => {
 
     it('can be reset to clear all stubs', () => {
       // Set up some stubs
-      mockPort.expectCommand(0x01, 222).respondWith(() => 
+      mockPort.expectCommand(0x01, 222).respondWith(() =>
         mockPort.createStringResponse(222, "TEST")
       );
-      
+
       expect(mockPort.stubCount).toBeGreaterThan(0);
-      
+
       // Reset should clear everything
       mockPort.reset();
-      
+
       expect(mockPort.stubCount).toBe(0);
       expect(mockPort.getWrittenData().length).toBe(0);
     });
