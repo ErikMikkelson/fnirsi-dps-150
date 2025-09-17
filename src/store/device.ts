@@ -58,9 +58,14 @@ export const useDeviceStore = defineStore('device', {
 
   actions: {
     async init() {
-      if (!navigator.serial) {
-        // Use test client
-        console.log('Using TestDPS150 client');
+      // Debug: log environment variable
+      console.log('VITE_USE_TEST_CLIENT:', import.meta.env.VITE_USE_TEST_CLIENT);
+      console.log('All env vars:', import.meta.env);
+      
+      // Check for test mode environment variable
+      if (import.meta.env.VITE_USE_TEST_CLIENT) {
+        // Use test client for local development
+        console.log('Using TestDPS150 client (VITE_USE_TEST_CLIENT is set)');
         await backend.connectTest(
           Comlink.proxy((data: any) => {
             if (data.type === 'systemInfo') {
@@ -78,20 +83,24 @@ export const useDeviceStore = defineStore('device', {
           })
         );
         const deviceInfo = await backend.getDeviceInfo();
+        console.log('Test client device info:', deviceInfo);
         Object.assign(this.device, deviceInfo);
-        this.port = {} as SerialPort; // Fake port
+        // Create a more realistic fake port object for test mode
+        this.port = {
+          readable: {},
+          writable: {},
+          open: () => Promise.resolve(),
+          close: () => Promise.resolve(),
+          getInfo: () => ({ usbVendorId: 0x1234, usbProductId: 0x5678 })
+        } as unknown as SerialPort;
+        console.log('Test client initialized, port set to:', this.port);
+        console.log('Device state after test client setup:', this.device);
         return;
       }
       
-      // Check for previously authorized ports but don't auto-connect
-      // User must explicitly click connect button
-      const ports = await navigator.serial.getPorts();
-      if (ports.length) {
-        console.log(`Found ${ports.length} previously authorized port(s). Click connect to use them.`);
-      }
-    },
-
-    async start(p: SerialPort) {
+      // Normal mode - present connect button, don't auto-connect
+      console.log('Web Serial mode - click connect button to connect to device');
+    },    async start(p: SerialPort) {
       if (!p) return;
       this.port = p;
 

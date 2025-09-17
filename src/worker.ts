@@ -14,6 +14,8 @@ const exposed = {
   async connectTest(onUpdate: (data: any) => void) {
     dps = new TestDPS150Client();
     await dps.init(onUpdate);
+    // Start the test data simulation
+    await (dps as TestDPS150Client).connectTest();
     return true;
   },
   async disconnect() {
