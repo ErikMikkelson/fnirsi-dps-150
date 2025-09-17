@@ -474,9 +474,12 @@ function downloadHistory() {
 
       <v-spacer></v-spacer>
 
-      <span class="ms-2">
-        {{ formatNumber(device.temperature) }}℃ Input: {{ formatNumber(device.inputVoltage) }}V
-      </span>
+      <v-chip color="blue" variant="flat" class="me-2">
+        {{ formatNumber(device.temperature) }}℃
+      </v-chip>
+      <v-chip color="orange" variant="flat" class="me-2">
+        Input: {{ formatNumber(device.inputVoltage) }}V
+      </v-chip>
 
       <v-btn class="connect" icon variant="flat" color="red" @click="connect" v-if="!port">
         <v-icon>mdi-lan-disconnect</v-icon>
@@ -621,14 +624,14 @@ function downloadHistory() {
 /* <weight>: Use a value from 100 to 900 */
 
 .noto-sans-jp-normal {
-  font-family: 'Noto Sans JP', serif;
+  font-family: 'Noto Sans JP', sans-serif;
   font-optical-sizing: auto;
   font-weight: 600;
   font-style: normal;
 }
 
 body {
-  font-family: 'Noto Sans JP', serif;
+  font-family: 'Noto Sans JP', sans-serif;
   font-optical-sizing: auto;
   font-weight: 600;
   font-style: normal;
