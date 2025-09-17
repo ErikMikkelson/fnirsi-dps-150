@@ -3,7 +3,7 @@ export class MockDPS150SerialPort extends EventTarget implements SerialPort {
   onconnect: ((this: SerialPort, ev: Event) => any) | null = null;
   ondisconnect: ((this: SerialPort, ev: Event) => any) | null = null;
   readonly connected: boolean = true;
-  
+
   private mockData = {
     setVoltage: 5.0,
     setCurrent: 1.0,
@@ -16,7 +16,7 @@ export class MockDPS150SerialPort extends EventTarget implements SerialPort {
 
   private controller: ReadableStreamDefaultController<Uint8Array> | null = null;
   private updateInterval: NodeJS.Timeout | null = null;
-  
+
   get readable(): ReadableStream<Uint8Array> | null {
     return new ReadableStream<Uint8Array>({
       start: (controller) => {
@@ -34,7 +34,7 @@ export class MockDPS150SerialPort extends EventTarget implements SerialPort {
       }
     });
   }
-  
+
   get writable(): WritableStream<Uint8Array> | null {
     return new WritableStream<Uint8Array>({
       write: (chunk) => {
@@ -49,7 +49,7 @@ export class MockDPS150SerialPort extends EventTarget implements SerialPort {
     if (command.length >= 5) {
       const cmd = command[2]; // Command type
       const dataLen = command[3];
-      
+
       // Handle some basic commands
       if (cmd === 193 && dataLen === 4) { // Set voltage
         const view = new DataView(command.buffer, command.byteOffset + 4, 4);
@@ -83,7 +83,7 @@ export class MockDPS150SerialPort extends EventTarget implements SerialPort {
     response[1] = 0x01; // CMD_GET
     response[2] = 0x01; // ALL_DATA
     response[3] = 139;  // Data length
-    
+
     // Fill in the data (simplified - real implementation would have all fields)
     const view = new DataView(response.buffer, 4);
     view.setFloat32(0, this.mockData.inputVoltage, true);  // Input voltage
@@ -93,19 +93,19 @@ export class MockDPS150SerialPort extends EventTarget implements SerialPort {
     view.setFloat32(16, this.mockData.outputCurrent, true); // Output current
     view.setFloat32(20, this.mockData.outputVoltage * this.mockData.outputCurrent, true); // Power
     view.setFloat32(24, this.mockData.temperature, true);   // Temperature
-    
+
     // Add some default values for other fields...
     view.setUint8(107, this.mockData.outputEnabled ? 1 : 0); // Output enabled
     view.setUint8(108, 0); // Protection state
     view.setUint8(109, 1); // CV mode
-    
+
     // Calculate checksum
     let checksum = response[2] + response[3];
     for (let i = 4; i < response.length - 1; i++) {
       checksum += response[i];
     }
     response[response.length - 1] = checksum & 0xFF;
-    
+
     this.controller.enqueue(response);
   }
 
