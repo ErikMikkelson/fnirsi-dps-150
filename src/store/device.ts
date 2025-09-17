@@ -1,4 +1,3 @@
-import type { Remote } from 'comlink';
 import * as Comlink from 'comlink';
 import { defineStore } from 'pinia';
 
