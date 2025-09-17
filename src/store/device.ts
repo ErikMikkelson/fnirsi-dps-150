@@ -82,9 +82,12 @@ export const useDeviceStore = defineStore('device', {
         this.port = {} as SerialPort; // Fake port
         return;
       }
+      
+      // Check for previously authorized ports but don't auto-connect
+      // User must explicitly click connect button
       const ports = await navigator.serial.getPorts();
       if (ports.length) {
-        this.start(ports[0]);
+        console.log(`Found ${ports.length} previously authorized port(s). Click connect to use them.`);
       }
     },
 
