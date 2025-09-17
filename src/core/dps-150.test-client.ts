@@ -1,3 +1,4 @@
+import { DeviceClient } from './device-client';
 import {
   DeviceInfo,
   DPS150Commands,
@@ -5,7 +6,7 @@ import {
   SystemInfo,
 } from './dps-150';
 
-export class TestDPS150 {
+export class TestDPS150 implements DeviceClient {
   private intervalId: NodeJS.Timeout | null = null;
   private onUpdate: ((data: any) => void) | null = null;
 
@@ -53,6 +54,9 @@ export class TestDPS150 {
 
   async init(onUpdate: (data: any) => void) {
     this.onUpdate = onUpdate;
+  }
+
+  async connectTest() {
     this.startSendingUpdates();
   }
 
@@ -106,6 +110,14 @@ export class TestDPS150 {
 
   async disable(): Promise<void> {
     this.systemInfo.outputClosed = false;
+  }
+
+  async startMetering(): Promise<void> {
+    // No-op for test client
+  }
+
+  async stopMetering(): Promise<void> {
+    // No-op for test client
   }
 
   async getDeviceInfo(): Promise<DeviceInfo> {

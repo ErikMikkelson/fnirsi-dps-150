@@ -1,4 +1,5 @@
 import { sleep } from '../utils';
+import { DeviceClient } from './device-client';
 
 const HEADER_INPUT  = 0xf0; // 240
 const HEADER_OUTPUT = 0xf1; // 241
@@ -165,10 +166,11 @@ interface DeviceData {
 
 export type DPS150Callback = (data: DeviceData) => void;
 
-export class DPS150 {
+export class DPS150 implements DeviceClient {
 	private port: SerialPort;
 	private callback: DPS150Callback;
 	private reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+	private responsePromises: Map<number, { resolve: (value: any) => void, reject: (reason?: any) => void }> = new Map();
 
 
 	constructor(port: SerialPort, callback: DPS150Callback) {
@@ -333,6 +335,10 @@ export class DPS150 {
 		switch (c3) {
 			case 192: // input voltage
 				callback({ inputVoltage: view.getFloat32(0, true) });
+				if (this.responsePromises.has(c3)) {
+					this.responsePromises.get(c3)?.resolve(view.getFloat32(0, true));
+					this.responsePromises.delete(c3);
+				}
 				break;
 			case 195: // output voltage, current, power
 				callback({
@@ -362,14 +368,26 @@ export class DPS150 {
 			case 222: // model name
 				// d33
 				callback({ modelName: String.fromCharCode(...c5) });
+				if (this.responsePromises.has(c3)) {
+					this.responsePromises.get(c3)?.resolve(String.fromCharCode(...c5));
+					this.responsePromises.delete(c3);
+				}
 				break;
 			case 223: // hardware version
 				// d34
 				callback({ hardwareVersion: String.fromCharCode(...c5) });
+				if (this.responsePromises.has(c3)) {
+					this.responsePromises.get(c3)?.resolve(String.fromCharCode(...c5));
+					this.responsePromises.delete(c3);
+				}
 				break;
 			case 224: // firmware version
 				// d35
 				callback({ firmwareVersion: String.fromCharCode(...c5) });
+				if (this.responsePromises.has(c3)) {
+					this.responsePromises.get(c3)?.resolve(String.fromCharCode(...c5));
+					this.responsePromises.delete(c3);
+				}
 				break;
 			case 225: // ???
 				// d36
@@ -482,14 +500,66 @@ export class DPS150 {
 						upperLimitVoltage: d37,
 						upperLimitCurrent: d38,
 					});
+					if (this.responsePromises.has(c3)) {
+						this.responsePromises.get(c3)?.resolve({
+							inputVoltage: d1,
+							setVoltage: d2,
+							setCurrent: d3,
+							outputVoltage: d4,
+							outputCurrent: d5,
+							outputPower: d6,
+							temperature: d7,
+							group1setVoltage: d8,
+							group1setCurrent: d9,
+							group2setVoltage: d10,
+							group2setCurrent: d11,
+							group3setVoltage: d12,
+							group3setCurrent: d13,
+							group4setVoltage: d14,
+							group4setCurrent: d15,
+							group5setVoltage: d16,
+							group5setCurrent: d17,
+							group6setVoltage: d18,
+							group6setCurrent: d19,
+							overVoltageProtection: d20,
+							overCurrentProtection: d21,
+							overPowerProtection: d22,
+							overTemperatureProtection: d23,
+							lowVoltageProtection: d24,
+							brightness: d25,
+							volume: d26,
+							meteringClosed: d27 === 0,
+							outputCapacity: d28,
+							outputEnergy: d29,
+							outputClosed: d30 === 1,
+							protectionState: PROTECTION_STATES[d31],
+							mode: d32 === 0 ? "CC" : "CV",
+							upperLimitVoltage: d37,
+							upperLimitCurrent: d38,
+						});
+						this.responsePromises.delete(c3);
+					}
 				}
 				break;
 		}
 	}
 
+	private async sendCommandWithResponse<T>(c1: number, c2: number, c3: number, c5: number | number[] | Uint8Array): Promise<T> {
+		return new Promise<T>((resolve, reject) => {
+			this.responsePromises.set(c3, { resolve, reject });
+			this.sendCommand(c1, c2, c3, c5);
+			setTimeout(() => {
+				if (this.responsePromises.has(c3)) {
+					this.responsePromises.delete(c3);
+					reject(new Error('Timeout'));
+				}
+			}, 1000);
+		});
+	}
 
-	async getAll(): Promise<void> {
-		await this.sendCommand(HEADER_OUTPUT, CMD_GET, ALL, 0); // get all
+
+	async getAll(): Promise<any> {
+		return this.sendCommandWithResponse(HEADER_OUTPUT, CMD_GET, ALL, 0);
 	}
 
 	async setFloatValue(type: number, value: number): Promise<void> {
@@ -514,5 +584,25 @@ export class DPS150 {
 
 	async stopMetering(): Promise<void> {
 		await this.setByteValue(METERING_ENABLE, 0);
+	}
+
+	async close(): Promise<void> {
+		await this.stop();
+	}
+
+	async getDeviceInfo(): Promise<DeviceInfo> {
+		return this.getAll();
+	}
+
+	async getSystemInfo(): Promise<SystemInfo> {
+		return this.getAll();
+	}
+
+	async getGroupValue(group: number): Promise<GroupValue> {
+		const all = await this.getAll();
+		return {
+			setVoltage: all[`group${group}setVoltage`],
+			setCurrent: all[`group${group}setCurrent`],
+		}
 	}
 }
