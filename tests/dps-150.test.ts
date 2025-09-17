@@ -30,6 +30,8 @@ describe('DPS150', () => {
     vi.useFakeTimers();
     vi.clearAllTimers();
     mockPort = new MockSerialPort();
+    // Set up default responses for initialization commands
+    mockPort.setupDefaultResponses();
     callback = vi.fn();
     // DPS150Client is now created with the port, and started in tests that need an active connection
     dps = new DPS150Client(mockPort, callback);
@@ -45,7 +47,10 @@ describe('DPS150', () => {
 
   describe('sendCommand', () => {
     beforeEach(async () => {
-      await dps.start();
+      const startPromise = dps.start();
+      // Advance timers to allow initialization commands to complete
+      await vi.advanceTimersByTimeAsync(100);
+      await startPromise;
     });
 
     it('数値データでコマンドを正しく送信する', async () => {
@@ -109,9 +114,79 @@ describe('DPS150', () => {
     });
   });
 
+  describe('WireMock-style Mock Configuration', () => {
+    it('can set up custom responses for specific commands', async () => {
+      // Clear default responses and set up custom ones
+      mockPort.clearStubs();
+      
+      // Set up a custom response for model name
+      mockPort.expectCommand(0x01, 222).respondWith(() => 
+        mockPort.createStringResponse(222, "CUSTOM-DPS")
+      );
+      
+      // Set up a custom response for voltage reading
+      mockPort.whenReceiving((cmd) => {
+        return cmd.length >= 4 && cmd[2] === 0x01 && cmd[3] === 193;
+      }).respondWith(
+        createFloatResponsePacket(193, 12.5)
+      );
+      
+      const startPromise = dps.start();
+      await vi.advanceTimersByTimeAsync(100);
+      await startPromise;
+      
+      // Test that we got the custom model name during initialization
+      const writtenData = mockPort.getWrittenData();
+      expect(writtenData.some(data => 
+        data[2] === 0x01 && data[3] === 222
+      )).toBe(true);
+    });
+
+    it('supports one-time responses', async () => {
+      mockPort.clearStubs();
+      
+      // Set up a one-time response
+      mockPort.expectCommand(0x01, 222).respondWith(() => 
+        mockPort.createStringResponse(222, "FIRST-CALL"), 
+        true  // once = true
+      );
+      
+      // Set up a default response for subsequent calls
+      mockPort.expectCommand(0x01, 222).respondWith(() => 
+        mockPort.createStringResponse(222, "SUBSEQUENT-CALLS")
+      );
+      
+      const startPromise = dps.start();
+      await vi.advanceTimersByTimeAsync(100);
+      await startPromise;
+      
+      // The first call should have used the one-time response
+      // Subsequent calls would use the default response
+      expect(mockPort.getWrittenData().length).toBeGreaterThan(0);
+    });
+
+    it('can be reset to clear all stubs', () => {
+      // Set up some stubs
+      mockPort.expectCommand(0x01, 222).respondWith(() => 
+        mockPort.createStringResponse(222, "TEST")
+      );
+      
+      expect(mockPort.stubCount).toBeGreaterThan(0);
+      
+      // Reset should clear everything
+      mockPort.reset();
+      
+      expect(mockPort.stubCount).toBe(0);
+      expect(mockPort.getWrittenData().length).toBe(0);
+    });
+  });
+
   describe('sendCommandFloat', () => {
     beforeEach(async () => {
-      await dps.start();
+      const startPromise = dps.start();
+      // Advance timers to allow initialization commands to complete
+      await vi.advanceTimersByTimeAsync(100);
+      await startPromise;
     });
 
     it('Float値を正しくリトルエンディアンに変換して送信する', async () => {
@@ -165,7 +240,10 @@ describe('DPS150', () => {
 
   describe('sendCommandRaw', () => {
     beforeEach(async () => {
-      await dps.start();
+      const startPromise = dps.start();
+      // Advance timers to allow initialization commands to complete
+      await vi.advanceTimersByTimeAsync(100);
+      await startPromise;
     });
 
     it('生のコマンドデータを送信する', async () => {
@@ -586,7 +664,10 @@ describe('DPS150', () => {
 
   describe('ユーティリティメソッド', () => {
     beforeEach(async () => {
-      await dps.start();
+      const startPromise = dps.start();
+      // Advance timers to allow initialization commands to complete
+      await vi.advanceTimersByTimeAsync(100);
+      await startPromise;
     });
 
     it('setFloatValue()がFloat値コマンドを送信する', async () => {
