@@ -29,7 +29,7 @@ describe('DPS150', () => {
   beforeEach(() => {
     mockPort = new MockSerialPort();
     callback = vi.fn();
-    dps = new DPS150(mockPort, callback);
+    dps = new DPS150(mockPort as any, callback);
   });
 
   describe('sendCommand', () => {
@@ -662,7 +662,7 @@ describe('DPS150', () => {
       const consoleSpy = vi.spyOn(console, 'log');
 
       await mockPort.open({ baudRate: 115200 });
-      dps.reader = { cancel: vi.fn() } as any;
+      (dps as any).reader = { cancel: vi.fn() } as any;
 
       await dps.stop();
 
