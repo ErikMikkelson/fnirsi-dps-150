@@ -4,12 +4,15 @@ import { defineStore } from 'pinia';
 
 import type { WorkerAPI } from '../core/worker';
 
-const Backend = Comlink.wrap<WorkerAPI>(new Worker(new URL('../core/worker.ts', import.meta.url), { type: 'module' }));
+const worker = new Worker(new URL('../core/worker.ts', import.meta.url), {
+  type: 'module',
+});
+const backend = Comlink.wrap<WorkerAPI>(worker);
 
 export const useDeviceStore = defineStore('device', {
   state: () => ({
     port: null as SerialPort | null,
-    dps: null as Remote<WorkerAPI> | null,
+    dps: backend,
     device: {
       inputVoltage: 0,
       setVoltage: 0,
@@ -57,9 +60,8 @@ export const useDeviceStore = defineStore('device', {
       if (!navigator.serial) {
         // Use test client
         console.log('Using TestDPS150 client');
-        this.dps = await new Backend();
         await this.dps.connectTest(
-          Comlink.proxy((data) => {
+          Comlink.proxy((data: any) => {
             console.log('Received data from test client:', data);
             if (data.type === 'systemInfo') {
               Object.assign(this.device, data.data);
@@ -80,7 +82,6 @@ export const useDeviceStore = defineStore('device', {
         this.port = {} as SerialPort; // Fake port
         return;
       }
-      this.dps = await new Backend();
       const ports = await navigator.serial.getPorts();
       if (ports.length) {
         this.start(ports[0]);
@@ -90,40 +91,17 @@ export const useDeviceStore = defineStore('device', {
     async start(p: SerialPort) {
       if (!p) return;
       this.port = p;
-      const portInfo = p.getInfo();
 
-      await this.dps!.startSerialPort(
-        {
-          usbVendorId: portInfo.usbVendorId,
-          usbProductId: portInfo.usbProductId,
-        },
-        Comlink.proxy((data) => {
-          if (!data) {
-            this.port = null;
-            return;
-          }
-          Object.assign(this.device, data);
-          if (typeof data.outputVoltage === 'number') {
-            if (
-              this.history.length >= 2 &&
-              data.outputVoltage === 0 &&
-              data.outputCurrent === 0 &&
-              data.outputPower === 0 &&
-              this.history[0].v === 0 &&
-              this.history[0].i === 0 &&
-              this.history[0].p === 0 &&
-              this.history[1].v === 0 &&
-              this.history[1].i === 0 &&
-              this.history[1].p === 0
-            ) {
-              this.history[0].time = new Date();
-              return;
-            }
+      await this.dps.connect(
+        p,
+        Comlink.proxy((data: any) => {
+          if (data.type === 'systemInfo') {
+            Object.assign(this.device, data.data);
             this.history.unshift({
               time: new Date(),
-              v: data.outputVoltage,
-              i: data.outputCurrent,
-              p: data.outputPower,
+              v: data.data.outputVoltage,
+              i: data.data.outputCurrent,
+              p: data.data.outputPower,
             });
             this.history.splice(10000);
           }
@@ -137,49 +115,43 @@ export const useDeviceStore = defineStore('device', {
 
     async disconnect() {
       if (this.port) {
-        await this.dps!.stopSerialPort();
+        await this.dps.disconnect();
         this.port = null;
       }
     },
 
-    async enable() {
-      await this.dps!.enable();
+    async setV(v: number) {
+      await this.dps.setFloatValue(193, v);
     },
 
-    async disable() {
-      await this.dps!.disable();
+    async setI(i: number) {
+      await this.dps.setFloatValue(194, i);
     },
 
-    async startMetering() {
-      await this.dps!.startMetering();
-      await this.dps!.getAll();
+    async setOVP(v: number) {
+      await this.dps.setFloatValue(195, v);
     },
 
-    async stopMetering() {
-      await this.dps!.stopMetering();
-      await this.dps!.getAll();
+    async setOCP(i: number) {
+      await this.dps.setFloatValue(196, i);
     },
 
-    async setFloatValue(key: number, value: number) {
-      await this.dps!.setFloatValue(key, value);
-      await this.dps!.getAll();
+    async setBrightness(b: number) {
+      await this.dps.setByteValue(203, b);
     },
 
-    async setByteValue(key: number, value: number) {
-      await this.dps!.setByteValue(key, value);
-      await this.dps!.getAll();
+    async execute(commands: any[], onProgress: (n: number) => void) {
+      await this.dps.executeCommands(commands, Comlink.proxy(onProgress));
     },
 
-    async executeCommands(queue: any[], onProgress: (n: number) => void) {
-      await this.dps!.executeCommands(queue, Comlink.proxy(onProgress));
-    },
-
-    abortExecuteCommands() {
-      this.dps!.abortExecuteCommands();
-    },
-
-    resetHistory() {
-      this.history = [];
+    async abortExecute() {
+      // This functionality doesn't exist in the worker, so we just disconnect
+      // to stop whatever is happening. A better implementation would be to have
+      // an abort signal in the worker.
+      await this.dps.disconnect();
+      if (this.port) {
+        await this.start(this.port);
+      }
     },
   },
 });

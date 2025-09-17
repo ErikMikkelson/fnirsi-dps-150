@@ -78,6 +78,8 @@ const exposed = {
   },
 };
 
+export type WorkerAPI = typeof exposed;
+
 Comlink.expose(exposed);
 
 
