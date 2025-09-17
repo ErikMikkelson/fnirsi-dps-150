@@ -7,8 +7,6 @@ export class MockSerialPort extends EventTarget implements SerialPort {
   writtenData: Uint8Array[];
   readQueue: Uint8Array[];
   readerCancelled: boolean;
-  _readable: ReadableStream<Uint8Array>;
-  _writable: WritableStream<Uint8Array>;
   _reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
   _writer: WritableStreamDefaultWriter<Uint8Array> | undefined;
   _dataWaiters: ((result: ReadableStreamReadResult<Uint8Array>) => void)[];
@@ -42,41 +40,25 @@ export class MockSerialPort extends EventTarget implements SerialPort {
     this.readQueue = [];
     this.readerCancelled = false;
     this._dataWaiters = [];
+  }
 
-    // WritableStreamのモック
-    this._writable = new WritableStream({
-      write: async (chunk) => {
-        // Always allow writes in tests - mock hardware behavior
-        // Real hardware may reject writes to closed ports, but for testing we capture all attempts
-        const data = new Uint8Array(chunk);
-        this.writtenData.push(data);
-
-        // Check for WireMock-style response stubs and respond if matched
-        this.handleWireMockResponse(data);
-      },
-      close: async () => {
-        // console.log('Writer closed');
-      },
-      abort: async (reason) => {
-        // console.log('Writer aborted:', reason);
-      }
-    });
-
-
-    // ReadableStreamのモック
-    this._readable = new ReadableStream({
+  get readable(): ReadableStream<Uint8Array> {
+    // Create a new ReadableStream for each access to avoid locking issues
+    const stream = new ReadableStream({
       start: (controller) => {
-        // This is a bit of a hack to allow us to push data from the outside
+        // Store controller on the mock instance so we can push data from tests
         (this as any)._controller = controller;
       },
       pull: (controller) => {
-        //
+        // No-op for mock
       },
       cancel: (reason) => {
         this.readerCancelled = true;
         // console.log('Stream cancelled:', reason);
       }
     });
+    
+    return stream;
   }
 
   // WireMock-style API methods
@@ -165,15 +147,6 @@ export class MockSerialPort extends EventTarget implements SerialPort {
       }
     }
 
-    // Abort the writable stream
-    if (this.writable && !this.writable.locked) {
-        try {
-            await this.writable.abort('Port closed');
-        } catch(e) {
-            // ignore
-        }
-    }
-
     this.isClosing = false;
   }
 
@@ -188,12 +161,25 @@ export class MockSerialPort extends EventTarget implements SerialPort {
     };
   }
 
-  get readable(): ReadableStream<Uint8Array> {
-    return this._readable;
-  }
-
   get writable(): WritableStream<Uint8Array> {
-    return this._writable;
+    // Create a new WritableStream for each access to avoid locking issues
+    return new WritableStream({
+      write: async (chunk) => {
+        // Always allow writes in tests - mock hardware behavior
+        // Real hardware may reject writes to closed ports, but for testing we capture all attempts
+        const data = new Uint8Array(chunk);
+        this.writtenData.push(data);
+
+        // Check for WireMock-style response stubs and respond if matched
+        this.handleWireMockResponse(data);
+      },
+      close: async () => {
+        // console.log('Writer closed');
+      },
+      abort: async (reason) => {
+        // console.log('Writer aborted:', reason);
+      }
+    }, new CountQueuingStrategy({ highWaterMark: 1 }));
   }
 
   // Handle WireMock-style responses for any commands
