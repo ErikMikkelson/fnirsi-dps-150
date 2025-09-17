@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest';
 import {
   afterEach,
   beforeEach,
@@ -11,19 +12,19 @@ import {
   CURRENT_SET,
   DPS150,
   VOLTAGE_SET,
-} from '../src/core/dps-150.ts';
+} from '../src/core/dps-150';
 import {
   createCommandPacket,
   createFloatCommandPacket,
   createFloatResponsePacket,
   floatToLittleEndian,
-} from './helpers/packet.ts';
-import { MockSerialPort } from './mocks/webSerial.ts';
+} from './helpers/packet';
+import { MockSerialPort } from './mocks/webSerial';
 
 describe('DPS150', () => {
-  let mockPort;
-  let callback;
-  let dps;
+  let mockPort: MockSerialPort;
+  let callback: Mock;
+  let dps: DPS150;
 
   beforeEach(() => {
     mockPort = new MockSerialPort();
@@ -425,8 +426,8 @@ describe('DPS150', () => {
       expect(writtenData.length).toBeGreaterThan(0); // 複数の初期化コマンドが送信される
 
       // クリーンアップ：テスト終了時にreaderをキャンセル
-      if (dps.reader) {
-        await dps.reader.cancel();
+      if ((dps as any).reader) {
+        await (dps as any).reader.cancel();
       }
     });
 
@@ -434,14 +435,14 @@ describe('DPS150', () => {
       // まずポートを開いてreaderを設定
       await mockPort.open({ baudRate: 115200 });
       // readerのモックを設定
-      dps.reader = {
-        cancel: vi.fn()
+      (dps as any).reader = {
+        cancel: vi.fn(),
       };
 
       await dps.stop();
 
       expect(mockPort.isOpen).toBe(false);
-      expect(dps.reader.cancel).toHaveBeenCalledOnce();
+      expect((dps as any).reader.cancel).toHaveBeenCalledOnce();
 
       // 終了コマンドが送信されることを確認
       const writtenData = mockPort.getWrittenData();
@@ -455,8 +456,8 @@ describe('DPS150', () => {
     });
 
     afterEach(async () => {
-      if (dps.reader) {
-        await dps.reader.cancel();
+      if ((dps as any).reader) {
+        await (dps as any).reader.cancel();
       }
     });
 
@@ -652,8 +653,8 @@ describe('DPS150', () => {
       consoleSpy.mockRestore();
 
       // クリーンアップ
-      if (dps.reader) {
-        await dps.reader.cancel();
+      if ((dps as any).reader) {
+        await (dps as any).reader.cancel();
       }
     });
 
@@ -661,7 +662,7 @@ describe('DPS150', () => {
       const consoleSpy = vi.spyOn(console, 'log');
 
       await mockPort.open({ baudRate: 115200 });
-      dps.reader = { cancel: vi.fn() };
+      dps.reader = { cancel: vi.fn() } as any;
 
       await dps.stop();
 
