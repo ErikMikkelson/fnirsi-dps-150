@@ -31,7 +31,6 @@ const {
   port,
   device,
   history,
-  init,
   connect,
   disconnect,
   enable,
@@ -172,7 +171,6 @@ watch(() => port, (newPort) => {
 watch(graphOptions, updateGraph, { deep: true });
 
 onMounted(() => {
-  init();
   programExamples.forEach((example) => {
     example.code = example.code.trim().replace(/\t+/g, '');
   });

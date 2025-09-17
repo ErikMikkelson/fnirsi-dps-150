@@ -1,4 +1,6 @@
 // Mock serial port that simulates DPS-150 protocol responses
+import { HEADER_INPUT, CMD_GET, ALL } from '../clients/constants';
+
 export class MockDPS150SerialPort extends EventTarget implements SerialPort {
   onconnect: ((this: SerialPort, ev: Event) => any) | null = null;
   ondisconnect: ((this: SerialPort, ev: Event) => any) | null = null;
@@ -64,7 +66,12 @@ export class MockDPS150SerialPort extends EventTarget implements SerialPort {
   }
 
   private sendMockData() {
-    if (!this.controller) return;
+    if (!this.controller) {
+      console.log('MockDPS150SerialPort: No controller available');
+      return;
+    }
+
+    console.log('MockDPS150SerialPort: Sending mock data...');
 
     // Simulate realistic behavior
     if (this.mockData.outputEnabled) {
@@ -79,9 +86,9 @@ export class MockDPS150SerialPort extends EventTarget implements SerialPort {
 
     // Send ALL_DATA response (this is a simplified version)
     const response = new Uint8Array(144); // Total packet size
-    response[0] = 0x8A; // HEADER_INPUT
-    response[1] = 0x01; // CMD_GET
-    response[2] = 0x01; // ALL_DATA
+    response[0] = HEADER_INPUT; // Use correct header
+    response[1] = CMD_GET; // Use correct command
+    response[2] = ALL; // Use correct ALL_DATA constant
     response[3] = 139;  // Data length
 
     // Fill in the data (simplified - real implementation would have all fields)
@@ -105,7 +112,8 @@ export class MockDPS150SerialPort extends EventTarget implements SerialPort {
       checksum += response[i];
     }
     response[response.length - 1] = checksum & 0xFF;
-
+    
+    console.log('MockDPS150SerialPort: Enqueueing response:', Array.from(response.slice(0, 10)).map(b => b.toString(16)).join(' '));
     this.controller.enqueue(response);
   }
 
