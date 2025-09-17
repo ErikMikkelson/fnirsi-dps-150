@@ -62,28 +62,27 @@ export const useDeviceStore = defineStore('device', {
       console.log('VITE_USE_TEST_CLIENT:', import.meta.env.VITE_USE_TEST_CLIENT);
       console.log('All env vars:', import.meta.env);
 
-      // Check for test mode environment variable
+            // Check if test mode is enabled
       if (import.meta.env.VITE_USE_TEST_CLIENT) {
-        // Use test client for local development
-        console.log('Using TestDPS150 client (VITE_USE_TEST_CLIENT is set)');
-        await backend.connectTest(
-          Comlink.proxy((data: any) => {
-            if (data.type === 'systemInfo') {
-              Object.assign(this.device, data.data);
-              this.history.unshift({
-                time: new Date(),
-                v: data.data.voltage,
-                i: data.data.current,
-                p: data.data.power,
-              });
-              if (this.history.length > 1000) {
-                this.history.pop();
-              }
-            }
-          })
+        const backend = Comlink.wrap<WorkerAPI>(
+          new Worker(new URL('../worker.ts', import.meta.url), { type: 'module' })
         );
+        const onUpdateCallback = Comlink.proxy((data: any) => {
+          if (data.type === 'systemInfo') {
+            Object.assign(this.device, data.data);
+            this.history.unshift({
+              time: new Date(),
+              v: data.data.voltage,
+              i: data.data.current,
+              p: data.data.power,
+            });
+            if (this.history.length > 1000) {
+              this.history.pop();
+            }
+          }
+        });
+        await backend.connectTest(onUpdateCallback);
         const deviceInfo = await backend.getDeviceInfo();
-        console.log('Test client device info:', deviceInfo);
         Object.assign(this.device, deviceInfo);
         // Create a more realistic fake port object for test mode
         this.port = {
@@ -93,8 +92,7 @@ export const useDeviceStore = defineStore('device', {
           close: () => Promise.resolve(),
           getInfo: () => ({ usbVendorId: 0x1234, usbProductId: 0x5678 })
         } as unknown as SerialPort;
-        console.log('Test client initialized, port set to:', this.port);
-        console.log('Device state after test client setup:', this.device);
+        console.log('Test mode: port set to:', this.port);
         return;
       }
 
