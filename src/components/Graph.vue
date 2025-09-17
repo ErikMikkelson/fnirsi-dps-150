@@ -63,11 +63,11 @@ function updateGraph() {
 
   for (let i = 0; i < props.history.length; i++) {
     const h = props.history[i] as { time: Date; v: number; i: number; p: number };
-    
+
     // Filter by time instead of fixed count - only show data within the duration window
     const cutoffTime = new Date(Date.now() - 1000 * props.graphOptions.duration);
     if (h.time < cutoffTime) break;
-    
+
     voltage.x.push(h.time as any);
     voltage.y.push(h.v as any);
     current.x.push(h.time as any);

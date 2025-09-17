@@ -65,23 +65,23 @@ export class TestDPS150Client implements DeviceClient {
 
   private prePopulateHistoricalData() {
     if (!this.onUpdate) return;
-    
+
     const now = new Date();
     const historicalPoints = 60; // 30 seconds of data at 500ms intervals
-    
+
     for (let i = historicalPoints; i > 0; i--) {
       const timeOffset = i * 500; // 500ms intervals
       const historicalTime = new Date(now.getTime() - timeOffset);
-      
+
       // Simulate historical voltage ramp-up
       const progress = (historicalPoints - i) / historicalPoints;
       const setVoltage = this.deviceInfo.setVoltage;
-      
+
       // Voltage gradually approaches target with some noise
       const voltage = setVoltage * progress * 0.9 + (Math.random() - 0.5) * 0.1;
       const current = 0.5 + (Math.random() - 0.5) * 0.1;
       const power = voltage * current;
-      
+
       const historicalData = {
         outputEnabled: this.systemInfo.outputEnabled,
         cv_cc: 'CV',
@@ -92,10 +92,10 @@ export class TestDPS150Client implements DeviceClient {
         inputVoltage: 20.0 + (Math.random() - 0.5) * 0.2, // USB-PD ~20V with small variations
         temperature: Math.round((30 + (Math.random() - 0.5) * 4) * 10) / 10, // Round to 1 decimal place
       };
-      
+
       // Send historical data point
-      this.onUpdate({ 
-        type: 'systemInfo', 
+      this.onUpdate({
+        type: 'systemInfo',
         data: historicalData,
         timestamp: historicalTime // Include timestamp for proper ordering
       });
