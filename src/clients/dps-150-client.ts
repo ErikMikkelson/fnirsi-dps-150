@@ -1,105 +1,34 @@
 import { sleep } from '../utils';
-
-const HEADER_INPUT  = 0xf0; // 240
-const HEADER_OUTPUT = 0xf1; // 241
-
-const CMD_GET     = 0xa1; // 161
-const CMD_XXX_176 = 0xb0; // 176
-const CMD_SET     = 0xb1; // 177
-const CMD_XXX_192 = 0xc0; // 192
-const CMD_XXX_193 = 0xc1; // 193
-
-// float
-export const VOLTAGE_SET = 193;
-export const CURRENT_SET = 194;
-
-export const GROUP1_VOLTAGE_SET = 197;
-export const GROUP1_CURRENT_SET = 198;
-export const GROUP2_VOLTAGE_SET = 199;
-export const GROUP2_CURRENT_SET = 200;
-export const GROUP3_VOLTAGE_SET = 201;
-export const GROUP3_CURRENT_SET = 202;
-export const GROUP4_VOLTAGE_SET = 203;
-export const GROUP4_CURRENT_SET = 204;
-export const GROUP5_VOLTAGE_SET = 205;
-export const GROUP5_CURRENT_SET = 206;
-export const GROUP6_VOLTAGE_SET = 207;
-export const GROUP6_CURRENT_SET = 208;
-
-export const OVP = 209;
-export const OCP = 210;
-export const OPP = 211;
-export const OTP = 212;
-export const LVP = 213;
-
-const METERING_ENABLE = 216;
-const OUTPUT_ENABLE = 219;
-
-// byte
-export const BRIGHTNESS = 214;
-export const VOLUME = 215;
-
-const MODEL_NAME = 222;
-const HARDWARE_VERSION = 223;
-const FIRMWARE_VERSION = 224;
-const ALL = 255;
-
-const PROTECTION_STATES = [
-	"",
-	"OVP",
-	"OCP",
-	"OPP",
-	"OTP",
-	"LVP",
-	"REP",
-];
-
-interface DeviceData {
-  inputVoltage?: number;
-  outputVoltage?: number;
-  outputCurrent?: number;
-  outputPower?: number;
-  temperature?: number;
-  outputCapacity?: number;
-  outputEnergy?: number;
-  outputClosed?: boolean;
-  protectionState?: string;
-  mode?: "CC" | "CV";
-  modelName?: string;
-  hardwareVersion?: string;
-  firmwareVersion?: string;
-  upperLimitVoltage?: number;
-  upperLimitCurrent?: number;
-  setVoltage?: number;
-  setCurrent?: number;
-  group1setVoltage?: number;
-  group1setCurrent?: number;
-  group2setVoltage?: number;
-  group2setCurrent?: number;
-  group3setVoltage?: number;
-  group3setCurrent?: number;
-  group4setVoltage?: number;
-  group4setCurrent?: number;
-  group5setVoltage?: number;
-  group5setCurrent?: number;
-  group6setVoltage?: number;
-  group6setCurrent?: number;
-  overVoltageProtection?: number;
-  overCurrentProtection?: number;
-  overPowerProtection?: number;
-  overTemperatureProtection?: number;
-  lowVoltageProtection?: number;
-  brightness?: number;
-  volume?: number;
-  meteringClosed?: boolean;
-}
+import {
+  ALL,
+  CMD_GET,
+  CMD_SET,
+  CMD_XXX_176,
+  CMD_XXX_193,
+  FIRMWARE_VERSION,
+  HARDWARE_VERSION,
+  HEADER_INPUT,
+  HEADER_OUTPUT,
+  METERING_ENABLE,
+  MODEL_NAME,
+  OUTPUT_ENABLE,
+  PROTECTION_STATES,
+} from './constants';
+import {
+  DeviceClient,
+  DeviceData,
+  DeviceInfo,
+  GroupValue,
+  SystemInfo,
+} from './interfaces';
 
 export type DPS150Callback = (data: DeviceData) => void;
 
-export class DPS150 {
+export class DPS150Client implements DeviceClient {
 	private port: SerialPort;
 	private callback: DPS150Callback;
 	private reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+	private responsePromises: Map<number, { resolve: (value: any) => void, reject: (reason?: any) => void }> = new Map();
 
 
 	constructor(port: SerialPort, callback: DPS150Callback) {
@@ -108,82 +37,118 @@ export class DPS150 {
 	}
 
 	async start(): Promise<void> {
+		try {
+			await this.port.open({
+				baudRate: 115200,
+				bufferSize: 1024,
+				dataBits: 8,
+				stopBits: 1,
+				flowControl: 'hardware',
+				parity: 'none'
+			});
+		} catch (error) {
+			// Port might already be open, ignore the error
+			console.log('Port open error (might already be open):', error);
+		}
 		console.log('start', this.port);
-		await this.port.open({
-			baudRate: 115200,
-			bufferSize: 1024,
-			dataBits: 8,
-			stopBits: 1,
-			flowControl: 'hardware',
-			parity: 'none'
-		});
 		this.startReader();
 		await this.initCommand();
 	}
 
 	async stop(): Promise<void> {
 		console.log('stop');
-		await this.sendCommand(HEADER_OUTPUT, CMD_XXX_193, 0, 0);
-		if (this.reader) {
-			await this.reader.cancel();
+		// Try to send a final command, but don't fail if the port is already closing
+		try {
+			await this.sendCommand(HEADER_OUTPUT, CMD_XXX_193, 0, 0);
+		} catch (error) {
+			console.warn("Could not send stop command, port might be closed already:", error);
 		}
-		await this.port.close();
 
+		if (this.reader) {
+			try {
+				await this.reader.cancel();
+			} catch (error) {
+				// Ignore errors on cancel, as the stream might already be closed
+			}
+			this.reader = undefined;
+		}
+		if (this.port.readable) { // Check if readable is not null before closing
+			try {
+				await this.port.close();
+			} catch (error) {
+				console.error("Error closing port:", error);
+			}
+		}
 	}
 
 	async startReader(): Promise<void> {
+		if (!this.port.readable) {
+			console.error("Port is not readable");
+			return;
+		}
 		console.log('reading...');
 		let buffer = new Uint8Array();
-		while (this.port.readable) {
-			const reader = this.port.readable.getReader();
-			this.reader = reader;
-			try {
-				while (true) {
-					const { value, done } = await reader.read();
-					if (done || !value) {
-						console.log('done');
-						return;
+		this.reader = this.port.readable.getReader();
+		try {
+			while (true) {
+				const { value, done } = await this.reader.read();
+				if (done) {
+					console.log('Reader cancelled or stream closed');
+					if (this.reader) {
+						try { this.reader.releaseLock(); } catch(e) { /* ignore */ }
 					}
-					const b = new Uint8Array(buffer.length + value.length);
-					b.set(buffer);
-					b.set(value, buffer.length);
-					buffer = b;
-					for (let i = 0; i < buffer.length - 6; i++) {
-						if (buffer[i] === HEADER_INPUT && buffer[i+1] === CMD_GET) {
-							const c1 = buffer[i];
-							const c2 = buffer[i+1];
-							const c3 = buffer[i+2];
-							const c4 = buffer[i+3];
-							if (i+c4 >= buffer.length) {
-								break
-							}
-							const c5 = new Uint8Array(buffer.subarray(i+4, i+4+c4));
-							const c6 = buffer[i+4+c4];
-
-							let s6 = c3 + c4;
-							for (let j = 0; j < c4; j++) {
-								s6 += c5[j];
-							};
-							s6 %= 0x100;
-							if (s6 != c6) {
-								// console.log('checksum error', s6, c6, Array.from(c5).map(v => v.toString(16)).join(" "));
-								buffer = buffer.subarray(i+1);
-								i = -1; // restart loop
-								continue;
-							}
-							// console.log('readData', c1, c2, c3, c4, Array.from(c5).map(v => v.toString(16)).join(" "), c6, '==', s6);
-							this.parseData(c1, c2, c3, c4, c5);
-							buffer = buffer.subarray(i+5+c4);
-							i = -1; // restart loop
-						}
-					}
-					// console.log('parseData', Array.from(buffer).map(v => v.toString(16)).join(" "));
-					// this.parseData(value);
+					break;
 				}
-			} catch (error) {
-				console.log(error);
-			} finally {
-				reader.releaseLock();
+				if (!value) {
+					continue;
+				}
+				const b = new Uint8Array(buffer.length + value.length);
+				b.set(buffer);
+				b.set(value, buffer.length);
+				buffer = b;
+				for (let i = 0; i < buffer.length - 6; i++) {
+					if (buffer[i] === HEADER_INPUT && buffer[i+1] === CMD_GET) {
+						const c1 = buffer[i];
+						const c2 = buffer[i+1];
+						const c3 = buffer[i+2];
+						const c4 = buffer[i+3];
+						if (i+4+c4 > buffer.length) { // Ensure entire packet is in buffer
+							break
+						}
+						const c5 = new Uint8Array(buffer.subarray(i+4, i+4+c4));
+						const c6 = buffer[i+4+c4];
+
+						let s6 = c3 + c4;
+						for (let j = 0; j < c4; j++) {
+							s6 += c5[j];
+						};
+						s6 %= 0x100;
+						if (s6 != c6) {
+							// console.log('checksum error', s6, c6, Array.from(c5).map(v => v.toString(16)).join(" "));
+							buffer = buffer.subarray(i+1);
+							i = -1; // restart loop
+							continue;
+						}
+						// console.log('readData', c1, c2, c3, c4, Array.from(c5).map(v => v.toString(16)).join(" "), c6, '==', s6);
+						this.parseData(c1, c2, c3, c4, c5);
+						buffer = buffer.subarray(i+5+c4);
+						i = -1; // restart loop
+					}
+				}
+			}
+		} catch (error) {
+			if (error instanceof DOMException && error.name === 'AbortError') {
+				console.log('Reading aborted.');
+			} else {
+				console.log('Error in startReader:', error);
+			}
+		} finally {
+			if (this.reader) {
+				try {
+					this.reader.releaseLock();
+				} catch (e) {
+					// Ignore error if lock is already released
+				}
 			}
 		}
 	}
@@ -200,15 +165,6 @@ export class DPS150 {
 	}
 
 	async sendCommand(c1: number, c2: number, c3: number, c5: number | number[] | Uint8Array): Promise<void> {
-		/**
-		 * c1: 0xf0 (in) or 0xf1 (out)
-		 * c2: command
-		 *   177: set
-		 *   161: get
-		 *
-		 *
-		 */
-
 		let data: number[] | Uint8Array;
 		if (typeof c5 === 'number') {
 			data = [ c5 ];
@@ -247,7 +203,7 @@ export class DPS150 {
 		// console.log('sendCommand', Array.from(command).map(v => v.toString(16)).join(" "));
 		if (!this.port.writable) {
 			console.error("Port is not writable");
-			return;
+			throw new Error("Port is not writable");
 		}
 		const writer = this.port.writable.getWriter();
 		try {
@@ -264,6 +220,10 @@ export class DPS150 {
 		switch (c3) {
 			case 192: // input voltage
 				callback({ inputVoltage: view.getFloat32(0, true) });
+				if (this.responsePromises.has(c3)) {
+					this.responsePromises.get(c3)?.resolve(view.getFloat32(0, true));
+					this.responsePromises.delete(c3);
+				}
 				break;
 			case 195: // output voltage, current, power
 				callback({
@@ -278,11 +238,11 @@ export class DPS150 {
 			case 217: // output capacity
 				callback({ outputCapacity: view.getFloat32(0, true) });
 				break;
-			case 218: // output energery
+			case 218: // output energy
 				callback({ outputEnergy: view.getFloat32(0, true) });
 				break;
 			case 219: // output closed?
-				callback({ outputClosed: c5[0] === 1 });
+				callback({ outputEnabled: c5[0] === 1 });
 				break;
 			case 220: // protection
 				callback({ protectionState: PROTECTION_STATES[c5[0]] });
@@ -293,14 +253,26 @@ export class DPS150 {
 			case 222: // model name
 				// d33
 				callback({ modelName: String.fromCharCode(...c5) });
+				if (this.responsePromises.has(c3)) {
+					this.responsePromises.get(c3)?.resolve(String.fromCharCode(...c5));
+					this.responsePromises.delete(c3);
+				}
 				break;
 			case 223: // hardware version
 				// d34
 				callback({ hardwareVersion: String.fromCharCode(...c5) });
+				if (this.responsePromises.has(c3)) {
+					this.responsePromises.get(c3)?.resolve(String.fromCharCode(...c5));
+					this.responsePromises.delete(c3);
+				}
 				break;
 			case 224: // firmware version
 				// d35
 				callback({ firmwareVersion: String.fromCharCode(...c5) });
+				if (this.responsePromises.has(c3)) {
+					this.responsePromises.get(c3)?.resolve(String.fromCharCode(...c5));
+					this.responsePromises.delete(c3);
+				}
 				break;
 			case 225: // ???
 				// d36
@@ -343,7 +315,7 @@ export class DPS150 {
 					const d26 = c5[97]; // volume
 					const d27 = c5[98]; // metering open=0 or close=1
 					const d28 = view.getFloat32(99, true);  // output capacity [Ah]
-					const d29 = view.getFloat32(103, true); // output energery [Wh]
+					const d29 = view.getFloat32(103, true); // output energy [Wh]
 					const d30 = c5[107]; // output closed?
 					const d31 = c5[108]; // protection OVP=1, OCP=2, OPP=3, OTP=4, LVP=5
 					const d32 = c5[109]; // cc=0 or cv=1
@@ -364,7 +336,7 @@ export class DPS150 {
 						d31, d32, d37, d38, d39, d40, d41, d42, d43
 					});
 					*/
-					// dump unknwon data
+					// dump unknown data
 					/*
 					console.log(c5.length, {
 						d31, d33, d39, d40, d41, d42, d43
@@ -406,21 +378,73 @@ export class DPS150 {
 						outputCapacity: d28,
 						outputEnergy: d29,
 
-						outputClosed: d30 === 1,
+						outputEnabled: d30 === 1,
 						protectionState: PROTECTION_STATES[d31],
 						mode: d32 === 0 ? "CC" : "CV",
 
 						upperLimitVoltage: d37,
 						upperLimitCurrent: d38,
 					});
+					if (this.responsePromises.has(c3)) {
+						this.responsePromises.get(c3)?.resolve({
+							inputVoltage: d1,
+							setVoltage: d2,
+							setCurrent: d3,
+							outputVoltage: d4,
+							outputCurrent: d5,
+							outputPower: d6,
+							temperature: d7,
+							group1setVoltage: d8,
+							group1setCurrent: d9,
+							group2setVoltage: d10,
+							group2setCurrent: d11,
+							group3setVoltage: d12,
+							group3setCurrent: d13,
+							group4setVoltage: d14,
+							group4setCurrent: d15,
+							group5setVoltage: d16,
+							group5setCurrent: d17,
+							group6setVoltage: d18,
+							group6setCurrent: d19,
+							overVoltageProtection: d20,
+							overCurrentProtection: d21,
+							overPowerProtection: d22,
+							overTemperatureProtection: d23,
+							lowVoltageProtection: d24,
+							brightness: d25,
+							volume: d26,
+							meteringClosed: d27 === 0,
+							outputCapacity: d28,
+							outputEnergy: d29,
+							outputEnabled: d30 === 1,
+							protectionState: PROTECTION_STATES[d31],
+							mode: d32 === 0 ? "CC" : "CV",
+							upperLimitVoltage: d37,
+							upperLimitCurrent: d38,
+						});
+						this.responsePromises.delete(c3);
+					}
 				}
 				break;
 		}
 	}
 
+	private async sendCommandWithResponse<T>(c1: number, c2: number, c3: number, c5: number | number[] | Uint8Array): Promise<T> {
+		return new Promise<T>((resolve, reject) => {
+			this.responsePromises.set(c3, { resolve, reject });
+			this.sendCommand(c1, c2, c3, c5);
+			setTimeout(() => {
+				if (this.responsePromises.has(c3)) {
+					this.responsePromises.delete(c3);
+					reject(new Error('Timeout'));
+				}
+			}, 1000);
+		});
+	}
 
-	async getAll(): Promise<void> {
-		await this.sendCommand(HEADER_OUTPUT, CMD_GET, ALL, 0); // get all
+
+	async getAll(): Promise<any> {
+		return this.sendCommandWithResponse(HEADER_OUTPUT, CMD_GET, ALL, 0);
 	}
 
 	async setFloatValue(type: number, value: number): Promise<void> {
@@ -445,5 +469,25 @@ export class DPS150 {
 
 	async stopMetering(): Promise<void> {
 		await this.setByteValue(METERING_ENABLE, 0);
+	}
+
+	async close(): Promise<void> {
+		await this.stop();
+	}
+
+	async getDeviceInfo(): Promise<DeviceInfo> {
+		return this.getAll();
+	}
+
+	async getSystemInfo(): Promise<SystemInfo> {
+		return this.getAll();
+	}
+
+	async getGroupValue(group: number): Promise<GroupValue> {
+		const all = await this.getAll();
+		return {
+			setVoltage: all[`group${group}setVoltage`],
+			setCurrent: all[`group${group}setCurrent`],
+		}
 	}
 }

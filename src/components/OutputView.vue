@@ -36,26 +36,26 @@ function formatProtectionState(state: string) {
 </script>
 
 <template>
-  <div class="main-view" :class="{ enabled: device.outputClosed }" style="width: 300px">
+  <div v-if="device" class="main-view" :class="{ enabled: device.outputEnabled }" style="width: 300px">
     <div class="changeable voltage" @click="emit('change-voltage')">
-      <span>{{ port ? formatNumber(device.outputVoltage) : '-' }}</span><span class="unit">V</span>
+      <span>{{ port ? formatNumber(device.outputVoltage || 0) : '-' }}</span><span class="unit">V</span>
       <div class="set">
-        vset <span>{{ formatNumber(device.setVoltage) }}</span><span class="unit">V</span>
+        vset <span>{{ formatNumber(device.setVoltage || 0) }}</span><span class="unit">V</span>
       </div>
     </div>
     <div class="changeable current" @click="emit('change-current')">
-      <span>{{ port ? formatNumber(device.outputCurrent) : '-' }}</span><span class="unit">A</span>
+      <span>{{ port ? formatNumber(device.outputCurrent || 0) : '-' }}</span><span class="unit">A</span>
       <div class="set">
-        cset <span>{{ formatNumber(device.setCurrent) }}</span><span class="unit">A</span>
+        cset <span>{{ formatNumber(device.setCurrent || 0) }}</span><span class="unit">A</span>
       </div>
     </div>
     <div class="power">
-      <span>{{ port ? formatNumber(device.outputPower) : '-' }}</span><span class="unit">W</span>
+      <span>{{ port ? formatNumber(device.outputPower || 0) : '-' }}</span><span class="unit">W</span>
     </div>
     <v-chip :class="{ current: device.mode === 'CC', voltage: device.mode === 'CV' }" variant="flat" size="large">
-      {{ device.mode }}
+      {{ device.mode || 'Unknown' }}
       <v-tooltip activator="parent" location="start">
-        {{ device.mode === 'CC' ? 'Constant Current' : 'Constant Voltage' }}
+        {{ device.mode === 'CC' ? 'Constant Current' : device.mode === 'CV' ? 'Constant Voltage' : 'Unknown Mode' }}
       </v-tooltip>
     </v-chip>
     <v-chip :color="device.protectionState ? 'red' : 'green'" variant="flat" size="large">
@@ -64,5 +64,8 @@ function formatProtectionState(state: string) {
         {{ formatProtectionState(device.protectionState) }}
       </v-tooltip>
     </v-chip>
+  </div>
+  <div v-else>
+    <p>Loading device information...</p>
   </div>
 </template>

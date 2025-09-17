@@ -12,6 +12,10 @@ const props = defineProps({
     type: Object,
     required: true,
   },
+  connected: {
+    type: Boolean,
+    required: true,
+  },
 });
 
 const graph = ref<HTMLDivElement | null>(null);
@@ -59,13 +63,17 @@ function updateGraph() {
 
   for (let i = 0; i < props.history.length; i++) {
     const h = props.history[i] as { time: Date; v: number; i: number; p: number };
+
+    // Filter by time instead of fixed count - only show data within the duration window
+    const cutoffTime = new Date(Date.now() - 1000 * props.graphOptions.duration);
+    if (h.time < cutoffTime) break;
+
     voltage.x.push(h.time as any);
     voltage.y.push(h.v as any);
     current.x.push(h.time as any);
     current.y.push(h.i as any);
     power.x.push(h.time as any);
     power.y.push(h.p as any);
-    if (i > 60) break;
   }
 
   const data = [];
@@ -80,7 +88,7 @@ function updateGraph() {
   }
 
   const layout = {
-    title: { text: '' },
+    title: { text: props.connected ? '' : 'Device is not connected', y: 0.5, x: 0.5 },
     showlegend: false,
     margin: {
       t: 0,
@@ -91,8 +99,11 @@ function updateGraph() {
     xaxis: {
       domain: [0.1, 0.9],
       type: 'date',
-      range: [new Date(Date.now() - 1000 * props.graphOptions.duration), new Date()],
-      tickformat: '%M:%S\n %H',
+      range: [
+        new Date(Date.now() - 1000 * props.graphOptions.duration),
+        new Date(),
+      ],
+      tickformat: '%H:%M:%S',
     },
     yaxis: {
       title: {

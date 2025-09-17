@@ -14,7 +14,7 @@ import {
   LVP,
   BRIGHTNESS,
   VOLUME,
-} from './core/dps-150.ts';
+} from './clients/constants';
 import { functionWithTimeout } from './utils';
 import Graph from './components/Graph.vue';
 import NumberInput from './components/NumberInput.vue';
@@ -81,10 +81,15 @@ const numberInput = reactive({
 });
 
 const tab = ref(null);
-const connectOverlay = ref(true);
+const connectOverlay = ref(false);
 const program = ref('');
 const programRunning = ref(false);
 const programRemaining = ref(0);
+
+// Computed property to determine if device is connected (including test mode)
+const isConnected = computed(() => {
+  return !!port || !!import.meta.env.VITE_USE_TEST_CLIENT;
+});
 
 const programExamples = reactive([
   {
@@ -155,9 +160,14 @@ function updateGraph() {
 }
 
 watch(history, updateGraph, { deep: true });
-watch(port, (newPort) => {
-  connectOverlay.value = !newPort;
-});
+watch(() => port, (newPort) => {
+  // In test mode, don't show overlay if we're using test client
+  if (import.meta.env.VITE_USE_TEST_CLIENT) {
+    connectOverlay.value = false;
+  } else {
+    connectOverlay.value = !newPort;
+  }
+}, { immediate: true });
 watch(graphOptions, updateGraph, { deep: true });
 
 onMounted(() => {
@@ -456,96 +466,127 @@ function downloadHistory() {
   <v-app>
     <v-app-bar density="default">
       <v-app-bar-title>
-        {{ device.modelName }} {{ device.firmwareVersion }} {{ device.hardwareVersion }}
+        FNIRSI DPS-150
+        <span class="ms-2" style="font-size: 50%">
+          {{ device.model }} SN:{{ device.serialNumber }} FW:{{ device.firmwareVersion }}
+        </span>
       </v-app-bar-title>
 
       <v-spacer></v-spacer>
 
       <span class="ms-2">
-        <v-chip>{{ device.temperature.toFixed(0) }}°C</v-chip>
-        <v-chip :color="device.protectionState === 'LVP' ? 'red' : 'default'">Input: {{ formatNumber(device.inputVoltage) }}V</v-chip>
+        {{ formatNumber(device.temperature) }}℃ Input: {{ formatNumber(device.inputVoltage) }}V
       </span>
 
       <v-btn class="connect" icon variant="flat" color="red" @click="connect" v-if="!port">
-        <v-icon>mdi-link-off</v-icon>
-        <v-tooltip activator="parent" location="bottom">Connect</v-tooltip>
+        <v-icon>mdi-lan-disconnect</v-icon>
+        <v-tooltip activator="parent" location="start">Connect</v-tooltip>
       </v-btn>
       <v-btn class="disconnect" icon variant="flat" color="green" @click="disconnect" v-else>
-        <v-icon>mdi-link</v-icon>
-        <v-tooltip activator="parent" location="bottom">Disconnect</v-tooltip>
+        <v-icon>mdi-lan-connect</v-icon>
+        <v-tooltip activator="parent" location="start">Disconnect</v-tooltip>
       </v-btn>
 
-      <v-btn icon variant="flat" color="green" @click="enable" v-if="!device.outputClosed" title="Enable" :disabled="!port">
-        <v-icon>mdi-power</v-icon>
-        <v-tooltip activator="parent" location="bottom">Enable Output</v-tooltip>
+      <v-btn icon variant="flat" color="green" @click="enable" v-if="!device.outputEnabled" title="Enable" :disabled="!port">
+        <v-icon>mdi-power-plug</v-icon>
+        <v-tooltip activator="parent" location="start">Enable</v-tooltip>
       </v-btn>
 
-      <v-btn icon variant="flat" color="red" @click="disable" v-if="device.outputClosed" title="Disable">
-        <v-icon>mdi-power</v-icon>
-        <v-tooltip activator="parent" location="bottom">Disable Output</v-tooltip>
+      <v-btn icon variant="flat" color="red" @click="disable" v-if="device.outputEnabled" title="Disable">
+        <v-icon>mdi-power-plug-off</v-icon>
+        <v-tooltip activator="parent" location="start">Disable</v-tooltip>
       </v-btn>
     </v-app-bar>
 
-    <v-main>
-      <v-container>
-        <div class="d-flex">
-          <div class="flex-fill" style="padding: 10px; height: 500px">
-            <div style="position: relative; height: 100%">
-              <Graph ref="graph" :history="history" :graph-options="graphOptions" />
-              <div class="d-flex justify-center" style="position: absolute; bottom: 0">
-                <v-checkbox label="Voltage" hide-details color="green" v-model="graphOptions.voltage"></v-checkbox>
-                <v-checkbox label="Current" hide-details color="red" v-model="graphOptions.current"></v-checkbox>
-                <v-checkbox label="Power" hide-details color="blue" v-model="graphOptions.power"></v-checkbox>
-              </div>
-            </div>
-          </div>
-
-          <OutputView :port="port" :device="device" @change-voltage="changeVoltage" @change-current="changeCurrent" />
-        </div>
-
-        <v-card>
-          <v-tabs v-model="tab">
-            <v-tab value="memory">Memory Groups</v-tab>
-            <v-tab value="metering">Metering</v-tab>
-            <v-tab value="protections">Protections</v-tab>
-            <v-tab value="program">Program</v-tab>
-            <v-tab value="history">History</v-tab>
-            <v-tab value="settings">Settings</v-tab>
-          </v-tabs>
-
-          <v-card-text>
+    <v-main class="main-content">
+      <v-container fluid>
+        <v-row>
+          <v-col cols="8">
+            <Graph
+              ref="graph"
+              :history="history"
+              :graph-options="graphOptions"
+              :connected="isConnected"
+              style="height: 400px"
+            />
+            <div class="tabs-container">
+            <v-tabs v-model="tab" align-tabs="start" class="mt-4">
+              <v-tab value="groups">Memory Groups</v-tab>
+              <v-tab value="metering">Metering</v-tab>
+              <v-tab value="protections">Protections</v-tab>
+              <v-tab value="program">Program</v-tab>
+              <v-tab value="history">History</v-tab>
+              <v-tab value="settings">Settings</v-tab>
+            </v-tabs>
             <v-window v-model="tab">
-              <v-window-item value="memory">
-                <MemoryGroups :groups="groups" :groups-input="groupsInput" @set-group="setGroup" @edit-group-voltage="editGroupVoltage" @edit-group-current="editGroupCurrent" />
+              <v-window-item value="groups">
+                <MemoryGroups
+                  :groups="groups"
+                  :groups-input="groupsInput"
+                  @set-group="setGroup"
+                  @edit-group-voltage="editGroupVoltage"
+                  @edit-group-current="editGroupCurrent"
+                />
               </v-window-item>
               <v-window-item value="metering">
-                <Metering :device="device" @start-metering="startMetering" @stop-metering="stopMetering" />
+                <Metering :device="device" />
               </v-window-item>
               <v-window-item value="protections">
-                <Protections :device="device" @change-ovp="changeOVP" @change-ocp="changeOCP" @change-opp="changeOPP" @change-otp="changeOTP" @change-lvp="changeLVP" />
+                <Protections
+                  :device="device"
+                  @change-ovp="changeOVP"
+                  @change-ocp="changeOCP"
+                  @change-opp="changeOPP"
+                  @change-otp="changeOTP"
+                  @change-lvp="changeLVP"
+                />
               </v-window-item>
               <v-window-item value="program">
-                <Program v-model:program="program" :program-examples="programExamples" :program-running="programRunning" :program-remaining="programRemaining" @run-program="runProgram" @abort-program="abortProgram" />
+                <Program
+                  v-model:program="program"
+                  :program-running="programRunning"
+                  :program-remaining="programRemaining"
+                  :program-examples="programExamples"
+                  @run-program="runProgram"
+                  @abort-program="abortProgram"
+                />
               </v-window-item>
               <v-window-item value="history">
-                <History :history="history" :history-table-headers="historyTableHeaders" @download-history="downloadHistory" @reset-history="resetHistory" />
+                <History
+                  :history="history"
+                  :history-table-headers="historyTableHeaders"
+                  @reset-history="resetHistory"
+                  @download-history="downloadHistory"
+                />
               </v-window-item>
               <v-window-item value="settings">
-                <Settings :device="device" @edit-brightness="editBrightness" @edit-volume="editVolume" />
+                <Settings
+                  :device="device"
+                  @edit-brightness="editBrightness"
+                  @edit-volume="editVolume"
+                />
               </v-window-item>
             </v-window>
-          </v-card-text>
-        </v-card>
-
+            </div>
+          </v-col>
+          <v-col cols="4">
+            <OutputView
+              :device="device"
+              @change-voltage="changeVoltage"
+              @change-current="changeCurrent"
+            />
+          </v-col>
+        </v-row>
       </v-container>
     </v-main>
 
-    <v-overlay v-model="connectOverlay" class="justify-center" style="position: fixed" contained>
-      <div style="text-align: center; padding: 5em">
+    <v-overlay v-model="connectOverlay" class="justify-center align-center" style="position: fixed" contained>
+      <div style="text-align: center">
         <p>Device is not connected</p>
-        <p>
-          <v-btn @click="connect" v-if="!port">Connect</v-btn>
-        </p>
+        <v-btn class="connect" color="red" @click="connect">
+          CONNECT
+          <v-tooltip activator="parent" location="start">Connect</v-tooltip>
+        </v-btn>
       </div>
     </v-overlay>
 
@@ -563,6 +604,13 @@ function downloadHistory() {
 </template>
 
 <style>
+.main-content {
+  padding-top: 64px;
+}
+
+.tabs-container {
+  margin-top: 20px;
+}
 .monomaniac-one-regular {
   font-family: 'Monomaniac One', sans-serif;
   font-weight: 400;
@@ -676,6 +724,12 @@ p.note {
 
 .groups .changeable.changed {
   background: #ffcccc;
+}
+
+.groups .v-list-item__content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1em;
 }
 
 #numberInputting {

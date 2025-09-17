@@ -153,7 +153,7 @@ export interface AllResponseData {
   meteringClosed?: boolean;
   outputCapacity?: number;
   outputEnergy?: number;
-  outputClosed?: boolean;
+  outputEnabled?: boolean;
   protectionState?: number;
   mode?: "CC" | "CV";
   upperLimitVoltage?: number;
@@ -208,7 +208,7 @@ export function createAllResponsePacket(data: AllResponseData): Uint8Array {
   view.setFloat32(99, data.outputCapacity || 0, true);   // d28
   view.setFloat32(103, data.outputEnergy || 0, true);    // d29
 
-  dataBytes[107] = data.outputClosed ? 1 : 0;            // d30
+  dataBytes[107] = data.outputEnabled ? 1 : 0;            // d30
   dataBytes[108] = data.protectionState || 0;            // d31
   dataBytes[109] = data.mode === "CC" ? 0 : 1;           // d32
   dataBytes[110] = 0;                                    // d33
