@@ -50,6 +50,9 @@ export class MockSerialPort extends EventTarget implements SerialPort {
         // Real hardware may reject writes to closed ports, but for testing we capture all attempts
         const data = new Uint8Array(chunk);
         this.writtenData.push(data);
+
+        // Check for WireMock-style response stubs and respond if matched
+        this.handleWireMockResponse(data);
       },
       close: async () => {
         // console.log('Writer closed');
@@ -193,6 +196,36 @@ export class MockSerialPort extends EventTarget implements SerialPort {
     return this._writable;
   }
 
+  // Handle WireMock-style responses for any commands
+  private handleWireMockResponse(commandData: Uint8Array) {
+    // Find a matching stub for this command
+    for (let i = 0; i < this.responseStubs.length; i++) {
+      const stub = this.responseStubs[i];
+
+      // Skip if this is a once-only stub that's already been used
+      if (stub.once && stub.used) continue;
+
+      // Check if this stub matches the command
+      if (stub.matcher(commandData)) {
+        // Mark as used if it's a once-only stub
+        if (stub.once) {
+          stub.used = true;
+        }
+
+        // Use setTimeout to ensure promise setup completes before response
+        setTimeout(() => {
+          if (this.isOpen) {
+            const response = typeof stub.response === 'function'
+              ? stub.response()
+              : stub.response;
+            this.pushReadData(response);
+          }
+        }, 0);
+
+        return; // Stop after first match
+      }
+    }
+  }
 
   /**
    * Public helper to create string responses for tests

@@ -28,6 +28,9 @@ describe('DPS150', () => {
 
   beforeEach(() => {
     mockPort = new MockSerialPort();
+    
+    // Reset to clean state
+    mockPort.reset();
 
     // Set up default initialization responses that DPS150Client needs
     mockPort.expectCommand(0x01, 222).respondWith(() =>
@@ -57,6 +60,8 @@ describe('DPS150', () => {
   describe('sendCommand', () => {
     beforeEach(async () => {
       await dps.start();
+      // Clear the initialization commands from written data
+      mockPort.getWrittenData().length = 0;
     });
 
     it('数値データでコマンドを正しく送信する', async () => {
@@ -188,6 +193,8 @@ describe('DPS150', () => {
   describe('sendCommandFloat', () => {
     beforeEach(async () => {
       await dps.start();
+      // Clear the initialization commands from written data
+      mockPort.getWrittenData().length = 0;
     });
 
     it('Float値を正しくリトルエンディアンに変換して送信する', async () => {
@@ -233,6 +240,8 @@ describe('DPS150', () => {
   describe('sendCommandRaw', () => {
     beforeEach(async () => {
       await dps.start();
+      // Clear the initialization commands from written data
+      mockPort.getWrittenData().length = 0;
     });
 
     it('生のコマンドデータを送信する', async () => {
@@ -563,6 +572,8 @@ describe('DPS150', () => {
     it('有効なパケットを受信して正しく解析する', async () => {
       // startReaderを非同期で開始
       dps.startReader();
+      // Clear any callbacks from initialization
+      callback.mockClear();
 
       // 入力電圧パケットを送信
       const voltagePacket = createFloatResponsePacket(192, 12.5);
@@ -578,12 +589,14 @@ describe('DPS150', () => {
 
     it('複数のパケットを連続して処理する', async () => {
       dps.startReader();
+      // Clear any callbacks from initialization
+      callback.mockClear();
+      
       // 複数のパケットを連続送信
       const voltagePacket = createFloatResponsePacket(192, 15.0);
       const temperaturePacket = createFloatResponsePacket(196, 25.5);
 
       mockPort.pushReadData(voltagePacket);
-
       mockPort.pushReadData(temperaturePacket);
 
       expect(callback).toHaveBeenCalledTimes(2);
@@ -593,6 +606,8 @@ describe('DPS150', () => {
 
     it('不正なチェックサムのパケットを適切にスキップする', async () => {
       dps.startReader();
+      // Clear any callbacks from initialization
+      callback.mockClear();
 
       // 不正なチェックサムのパケットを作成
       const invalidPacket = createFloatResponsePacket(192, 12.5);
@@ -613,6 +628,8 @@ describe('DPS150', () => {
 
     it('単独の不正なチェックサムパケットが処理される', async () => {
       dps.startReader();
+      // Clear any callbacks from initialization
+      callback.mockClear();
 
       // 不正なチェックサムのパケットのみ送信
       const invalidPacket = createFloatResponsePacket(192, 12.5);
@@ -635,6 +652,8 @@ describe('DPS150', () => {
   describe('ユーティリティメソッド', () => {
     beforeEach(async () => {
       await dps.start();
+      // Clear the initialization commands from written data
+      mockPort.getWrittenData().length = 0;
     });
 
     it('setFloatValue()がFloat値コマンドを送信する', async () => {
@@ -652,7 +671,6 @@ describe('DPS150', () => {
     it('setByteValue()がバイト値コマンドを送信する', async () => {
       const testValue = 128;
 
-      await dps.setByteValue(214, testValue); // BRIGHTNESS
       await dps.setByteValue(214, testValue); // BRIGHTNESS
 
       const writtenData = mockPort.getWrittenData();
@@ -706,12 +724,10 @@ describe('DPS150', () => {
       // The reader needs to be running to process the response
       dps.startReader();
 
-      const getAllPromise = dps.getAll();
+      // Clear written data after reader start
+      mockPort.getWrittenData().length = 0;
 
-      // Simulate a response from the device to resolve the promise
-      const responseData = new Uint8Array(139); // ALL response has 139 bytes of data
-      const responsePacket = createCommandPacket(0xf0, 0xa1, 255, responseData);
-      mockPort.pushReadData(responsePacket);
+      const getAllPromise = dps.getAll();
 
       // Wait for the getAll promise to resolve
       await expect(getAllPromise).resolves.toBeDefined();
@@ -727,13 +743,17 @@ describe('DPS150', () => {
   describe('ログ出力の検証', () => {
     it('start()時に適切なログが出力される', async () => {
       const consoleSpy = vi.spyOn(console, 'log');
+      
+      // Create a fresh DPS client that hasn't been started yet
+      const freshDps = new DPS150Client(mockPort, callback);
 
-      await dps.start();
+      await freshDps.start();
 
       expect(consoleSpy).toHaveBeenCalledWith('start', mockPort);
       expect(consoleSpy).toHaveBeenCalledWith('reading...');
 
       consoleSpy.mockRestore();
+      await freshDps.stop();
     });
 
     it('stop()時に適切なログが出力される', async () => {
