@@ -86,6 +86,11 @@ const program = ref('');
 const programRunning = ref(false);
 const programRemaining = ref(0);
 
+// Computed property to determine if device is connected (including test mode)
+const isConnected = computed(() => {
+  return !!port || import.meta.env.VITE_USE_TEST_CLIENT;
+});
+
 const programExamples = reactive([
   {
     name: 'Sweep Voltage',
@@ -501,7 +506,7 @@ function downloadHistory() {
               ref="graph"
               :history="history"
               :graph-options="graphOptions"
-              :connected="!!port"
+              :connected="isConnected"
               style="height: 400px"
             />
             <div class="tabs-container">
