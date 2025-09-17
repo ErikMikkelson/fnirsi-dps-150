@@ -78,6 +78,7 @@ const numberInput = reactive({
   units: [] as string[],
   input: '',
   prev: '' as number | string,
+  key: undefined as number | undefined,
 });
 
 const tab = ref(null);
@@ -183,6 +184,39 @@ async function onNumberInput(value: number) {
   if (value) {
     await setFloatValue(numberInput.key, value);
   }
+}
+
+function openNumberInput(config: {
+  title: string;
+  description?: string;
+  descriptionHtml?: string;
+  units: string[];
+  input: number;
+  unit: string;
+  key?: number;
+}): Promise<number | null> {
+  return new Promise((resolve) => {
+    numberInput.title = config.title;
+    numberInput.description = config.description || '';
+    numberInput.descriptionHtml = config.descriptionHtml || '';
+    numberInput.units = config.units;
+    numberInput.prev = config.input;
+    numberInput.unit = config.unit;
+    numberInput.key = config.key;
+    
+    showNumberInput.value = true;
+    
+    // Set up a one-time listener for the input result
+    const cleanup = watch(
+      () => showNumberInput.value,
+      (isShown) => {
+        if (!isShown) {
+          cleanup();
+          resolve(numberInput.result ? Number(numberInput.result) : null);
+        }
+      }
+    );
+  });
 }
 
 async function changeVoltage() {
