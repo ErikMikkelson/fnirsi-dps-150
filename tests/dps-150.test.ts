@@ -591,7 +591,7 @@ describe('DPS150', () => {
       const readerPromise = dps.startReader();
       // Wait for reader to be set up
       await new Promise(resolve => setTimeout(resolve, 10));
-      
+
       // Clear any callbacks from initialization
       callback.mockClear();
 
@@ -614,7 +614,7 @@ describe('DPS150', () => {
       const readerPromise = dps.startReader();
       // Wait for reader to be set up
       await new Promise(resolve => setTimeout(resolve, 10));
-      
+
       // Clear any callbacks from initialization
       callback.mockClear();
 
@@ -642,7 +642,7 @@ describe('DPS150', () => {
       const readerPromise = dps.startReader();
       // Wait for reader to be set up
       await new Promise(resolve => setTimeout(resolve, 10));
-      
+
       // Clear any callbacks from initialization
       callback.mockClear();
 

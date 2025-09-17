@@ -59,7 +59,7 @@ export class MockSerialPort extends EventTarget implements SerialPort {
         // console.log('Stream cancelled:', reason);
       }
     });
-    
+
     return stream;
   }
 
