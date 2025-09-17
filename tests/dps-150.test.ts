@@ -29,12 +29,19 @@ describe('DPS150', () => {
   beforeEach(() => {
     mockPort = new MockSerialPort();
     callback = vi.fn();
-    dps = new DPS150Client(mockPort.readable, mockPort.writable, callback);
+    // DPS150Client is now created with the port, and started in tests that need an active connection
+    dps = new DPS150Client(mockPort, callback);
+  });
+
+  afterEach(async () => {
+    // Ensure the client is stopped and the port is closed after each test
+    await dps.stop();
+    vi.clearAllMocks();
   });
 
   describe('sendCommand', () => {
     beforeEach(async () => {
-      await mockPort.open({ baudRate: 115200 });
+      await dps.start();
     });
 
     it('数値データでコマンドを正しく送信する', async () => {
@@ -90,7 +97,7 @@ describe('DPS150', () => {
 
   describe('sendCommandFloat', () => {
     beforeEach(async () => {
-      await mockPort.open({ baudRate: 115200 });
+      await dps.start();
     });
 
     it('Float値を正しくリトルエンディアンに変換して送信する', async () => {
@@ -135,7 +142,7 @@ describe('DPS150', () => {
 
   describe('sendCommandRaw', () => {
     beforeEach(async () => {
-      await mockPort.open({ baudRate: 115200 });
+      await dps.start();
     });
 
     it('生のコマンドデータを送信する', async () => {
@@ -200,7 +207,7 @@ describe('DPS150', () => {
       dps.parseData(0xf0, 0xa1, 217, data.length, data);
 
       expect(callback).toHaveBeenCalledWith({
-        outputCapacity: capacity
+        capacity: capacity
       });
     });
 
@@ -547,7 +554,7 @@ describe('DPS150', () => {
 
   describe('ユーティリティメソッド', () => {
     beforeEach(async () => {
-      await mockPort.open({ baudRate: 115200 });
+      await dps.start();
     });
 
     it('setFloatValue()がFloat値コマンドを送信する', async () => {

@@ -64,44 +64,79 @@ interface DeviceData {
 export type DPS150Callback = (data: DeviceData) => void;
 
 export class DPS150Client implements DeviceClient {
-	private readable: ReadableStream<Uint8Array>;
-	private writable: WritableStream<Uint8Array>;
+	private port: SerialPort;
 	private callback: DPS150Callback;
 	private reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
 	private responsePromises: Map<number, { resolve: (value: any) => void, reject: (reason?: any) => void }> = new Map();
 
 
-	constructor(readable: ReadableStream<Uint8Array>, writable: WritableStream<Uint8Array>, callback: DPS150Callback) {
-		this.readable = readable;
-		this.writable = writable;
+	constructor(port: SerialPort, callback: DPS150Callback) {
+		this.port = port;
 		this.callback = callback;
 	}
 
 	async start(): Promise<void> {
-		console.log('start');
+		if (!this.port.readable || !this.port.writable) {
+			await this.port.open({
+				baudRate: 115200,
+				bufferSize: 1024,
+				dataBits: 8,
+				stopBits: 1,
+				flowControl: 'hardware',
+				parity: 'none'
+			});
+		}
+		console.log('start', this.port);
 		this.startReader();
 		await this.initCommand();
 	}
 
 	async stop(): Promise<void> {
 		console.log('stop');
-		await this.sendCommand(HEADER_OUTPUT, CMD_XXX_193, 0, 0);
+		// Try to send a final command, but don't fail if the port is already closing
+		try {
+			await this.sendCommand(HEADER_OUTPUT, CMD_XXX_193, 0, 0);
+		} catch (error) {
+			console.warn("Could not send stop command, port might be closed already:", error);
+		}
+
 		if (this.reader) {
-			await this.reader.cancel();
+			try {
+				await this.reader.cancel();
+			} catch (error) {
+				// Ignore errors on cancel, as the stream might already be closed
+			}
+			this.reader = undefined;
+		}
+		if (this.port.readable) { // Check if readable is not null before closing
+			try {
+				await this.port.close();
+			} catch (error) {
+				console.error("Error closing port:", error);
+			}
 		}
 	}
 
 	async startReader(): Promise<void> {
+		if (!this.port.readable) {
+			console.error("Port is not readable");
+			return;
+		}
 		console.log('reading...');
 		let buffer = new Uint8Array();
-		const reader = this.readable.getReader();
-		this.reader = reader;
+		this.reader = this.port.readable.getReader();
 		try {
 			while (true) {
-				const { value, done } = await reader.read();
-				if (done || !value) {
-					console.log('done');
-					return;
+				const { value, done } = await this.reader.read();
+				if (done) {
+					console.log('Reader cancelled or stream closed');
+					if (this.reader) {
+						try { this.reader.releaseLock(); } catch(e) { /* ignore */ }
+					}
+					break;
+				}
+				if (!value) {
+					continue;
 				}
 				const b = new Uint8Array(buffer.length + value.length);
 				b.set(buffer);
@@ -113,7 +148,7 @@ export class DPS150Client implements DeviceClient {
 						const c2 = buffer[i+1];
 						const c3 = buffer[i+2];
 						const c4 = buffer[i+3];
-						if (i+c4 >= buffer.length) {
+						if (i+4+c4 > buffer.length) { // Ensure entire packet is in buffer
 							break
 						}
 						const c5 = new Uint8Array(buffer.subarray(i+4, i+4+c4));
@@ -136,13 +171,21 @@ export class DPS150Client implements DeviceClient {
 						i = -1; // restart loop
 					}
 				}
-				// console.log('parseData', Array.from(buffer).map(v => v.toString(16)).join(" "));
-				// this.parseData(value);
 			}
 		} catch (error) {
-			console.log(error);
+			if (error instanceof DOMException && error.name === 'AbortError') {
+				console.log('Reading aborted.');
+			} else {
+				console.log('Error in startReader:', error);
+			}
 		} finally {
-			reader.releaseLock();
+			if (this.reader) {
+				try {
+					this.reader.releaseLock();
+				} catch (e) {
+					// Ignore error if lock is already released
+				}
+			}
 		}
 	}
 
@@ -158,15 +201,6 @@ export class DPS150Client implements DeviceClient {
 	}
 
 	async sendCommand(c1: number, c2: number, c3: number, c5: number | number[] | Uint8Array): Promise<void> {
-		/**
-		 * c1: 0xf0 (in) or 0xf1 (out)
-		 * c2: command
-		 *   177: set
-		 *   161: get
-		 *
-		 *
-		 */
-
 		let data: number[] | Uint8Array;
 		if (typeof c5 === 'number') {
 			data = [ c5 ];
@@ -203,11 +237,11 @@ export class DPS150Client implements DeviceClient {
 
 	async sendCommandRaw(command: Uint8Array): Promise<void> {
 		// console.log('sendCommand', Array.from(command).map(v => v.toString(16)).join(" "));
-		if (!this.writable) {
+		if (!this.port.writable) {
 			console.error("Port is not writable");
-			return;
+			throw new Error("Port is not writable");
 		}
-		const writer = this.writable.getWriter();
+		const writer = this.port.writable.getWriter();
 		try {
 			await writer.write(command);
 			await sleep(50);

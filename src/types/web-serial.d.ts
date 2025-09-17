@@ -25,10 +25,28 @@ declare global {
   interface SerialPort extends EventTarget {
     readonly readable: ReadableStream<Uint8Array>;
     readonly writable: WritableStream<Uint8Array>;
+    readonly connected: boolean;
+    onconnect: ((this: SerialPort, ev: Event) => any) | null;
+    ondisconnect: ((this: SerialPort, ev: Event) => any) | null;
 
     open(options: SerialOptions): Promise<void>;
     close(): Promise<void>;
     getInfo(): SerialPortInfo;
+    getSignals(): Promise<SerialSignals>;
+    setSignals(signals: SerialOutputSignals): Promise<void>;
+  }
+
+  interface SerialOutputSignals {
+    dataTerminalReady?: boolean;
+    requestToSend?: boolean;
+    break?: boolean;
+  }
+
+  interface SerialSignals {
+    dataCarrierDetect: boolean;
+    clearToSend: boolean;
+    ringIndicator: boolean;
+    dataSetReady: boolean;
   }
 
   interface SerialOptions {

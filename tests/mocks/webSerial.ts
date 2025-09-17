@@ -1,28 +1,65 @@
 import { vi } from 'vitest';
 
-export class MockSerialPort {
+export class MockSerialPort extends EventTarget implements SerialPort {
   isOpen: boolean;
   openOptions: any;
   writtenData: Uint8Array[];
   readQueue: Uint8Array[];
   readerCancelled: boolean;
-  _readable: any;
-  _writable: any;
-  _reader: any;
-  _writer: any;
-  _dataWaiters: any[];
+  _readable: ReadableStream<Uint8Array>;
+  _writable: WritableStream<Uint8Array>;
+  _reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+  _writer: WritableStreamDefaultWriter<Uint8Array> | undefined;
+  _dataWaiters: ((result: ReadableStreamReadResult<Uint8Array>) => void)[];
+
+  // Add missing properties with mock implementations
+  onconnect: ((this: SerialPort, ev: Event) => any) | null = null;
+  ondisconnect: ((this: SerialPort, ev: Event) => any) | null = null;
+  readonly connected: boolean = false; // Mock value
+  setSignals = vi.fn().mockResolvedValue(undefined);
+  getSignals = vi.fn().mockResolvedValue({} as SerialSignals);
+
 
   constructor() {
+    super();
     this.isOpen = false;
     this.openOptions = null;
     this.writtenData = [];
     this.readQueue = [];
     this.readerCancelled = false;
-    this._readable = null;
-    this._writable = null;
-    this._reader = null;
-    this._writer = null;
     this._dataWaiters = [];
+
+    // WritableStreamのモック
+    this._writable = new WritableStream({
+      write: async (chunk) => {
+        if (!this.isOpen) {
+          throw new Error('Port is not open');
+        }
+        this.writtenData.push(new Uint8Array(chunk));
+      },
+      close: async () => {
+        // console.log('Writer closed');
+      },
+      abort: async (reason) => {
+        // console.log('Writer aborted:', reason);
+      }
+    });
+
+
+    // ReadableStreamのモック
+    this._readable = new ReadableStream({
+      start: (controller) => {
+        // This is a bit of a hack to allow us to push data from the outside
+        (this as any)._controller = controller;
+      },
+      pull: (controller) => {
+        //
+      },
+      cancel: (reason) => {
+        this.readerCancelled = true;
+        // console.log('Stream cancelled:', reason);
+      }
+    });
   }
 
   async open(options: any) {
@@ -32,60 +69,33 @@ export class MockSerialPort {
     this.openOptions = options;
     this.isOpen = true;
     this.readerCancelled = false;
-
-    // WritableStreamのモック
-    this._writable = {
-      getWriter: () => {
-        this._writer = {
-          write: vi.fn(async (data) => {
-            this.writtenData.push(new Uint8Array(data));
-          }),
-          releaseLock: vi.fn()
-        };
-        return this._writer;
-      }
-    };
-
-    // ReadableStreamのモック
-    this._readable = {
-      getReader: () => {
-        this._reader = {
-          read: vi.fn(async () => {
-            if (this.readerCancelled) {
-              return { done: true };
-            }
-
-            // readQueueからデータを取り出す
-            if (this.readQueue.length > 0) {
-              const value = this.readQueue.shift();
-              return { value, done: false };
-            }
-
-            // データがない場合は実際のReadableStreamのように待機
-            return new Promise((resolve) => {
-              this._dataWaiters.push(resolve);
-            });
-          }),
-          cancel: vi.fn(async () => {
-            this.readerCancelled = true;
-            // 待機中のreaderをすべて終了
-            this._dataWaiters.forEach(resolve => resolve({ done: true }));
-            this._dataWaiters = [];
-          }),
-          releaseLock: vi.fn()
-        };
-        return this._reader;
-      }
-    };
   }
 
   async close() {
     if (!this.isOpen) {
-      throw new Error('Port is not open');
+      // Allow closing an already closed port
+      return;
     }
     this.isOpen = false;
-    this._readable = null;
-    this._writable = null;
+    this.readerCancelled = true;
+
+    // Close the readable stream controller if it exists
+    if ((this as any)._controller) {
+      try {
+        (this as any)._controller.close();
+      } catch (e) {
+        // Ignore if already closing
+      }
+    }
+
+    // Abort the writable stream
+    if (this.writable && !this.writable.locked) {
+        try {
+            await this.writable.abort('Port closed');
+        } catch(e) {
+            // ignore
+        }
+    }
   }
 
   async forget() {
@@ -99,22 +109,18 @@ export class MockSerialPort {
     };
   }
 
-  get readable() {
-    return this.isOpen ? this._readable : null;
+  get readable(): ReadableStream<Uint8Array> {
+    return this._readable;
   }
 
-  get writable() {
-    return this.isOpen ? this._writable : null;
+  get writable(): WritableStream<Uint8Array> {
+    return this._writable;
   }
 
   // テスト用ヘルパーメソッド
   pushReadData(data: Uint8Array) {
-    this.readQueue.push(data);
-    // 待機中のreaderがあれば解決
-    if (this._dataWaiters.length > 0) {
-      const resolve = this._dataWaiters.shift();
-      const value = this.readQueue.shift();
-      resolve({ value, done: false });
+    if (this.isOpen && (this as any)._controller) {
+      (this as any)._controller.enqueue(data);
     }
   }
 
