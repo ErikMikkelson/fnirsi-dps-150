@@ -55,6 +55,29 @@ export const useDeviceStore = defineStore('device', {
   actions: {
     async init() {
       if (!navigator.serial) {
+        // Use test client
+        console.log('Using TestDPS150 client');
+        this.dps = await new Backend();
+        await this.dps.connectTest(
+          Comlink.proxy((data) => {
+            console.log('Received data from test client:', data);
+            if (data.type === 'systemInfo') {
+              Object.assign(this.device, data.data);
+              this.history.unshift({
+                time: new Date(),
+                v: data.data.outputVoltage,
+                i: data.data.outputCurrent,
+                p: data.data.outputPower,
+              });
+              if (this.history.length > 1000) {
+                this.history.pop();
+              }
+            }
+          })
+        );
+        const deviceInfo = await this.dps.getDeviceInfo();
+        Object.assign(this.device, deviceInfo);
+        this.port = {} as SerialPort; // Fake port
         return;
       }
       this.dps = await new Backend();

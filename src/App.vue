@@ -495,7 +495,7 @@ function downloadHistory() {
             <Graph
               ref="graph"
               :history="history"
-              :options="graphOptions"
+              :graph-options="graphOptions"
               :connected="!!port"
               style="height: 400px"
             />

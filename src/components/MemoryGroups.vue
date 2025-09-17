@@ -1,7 +1,5 @@
 <script setup lang="ts">
-
-
-defineProps({
+const props = defineProps({
   groups: {
     type: Array,
     required: true,
