@@ -30,7 +30,7 @@ export class MockSerialPort extends EventTarget implements SerialPort {
   ondisconnect: ((this: SerialPort, ev: Event) => any) | null = null;
   readonly connected: boolean = false; // Mock value
   setSignals = vi.fn().mockResolvedValue(undefined);
-  getSignals = vi.fn().mockResolvedValue({} as SerialSignals);
+  getSignals = vi.fn().mockResolvedValue({} as SerialInputSignals);
 
 
   constructor() {

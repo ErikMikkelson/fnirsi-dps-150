@@ -57,47 +57,33 @@ export const useDeviceStore = defineStore('device', {
   }),
 
   actions: {
-    async init() {
-      // Debug: log environment variable
-      console.log('VITE_USE_TEST_CLIENT:', import.meta.env.VITE_USE_TEST_CLIENT);
-      console.log('All env vars:', import.meta.env);
-
-            // Check if test mode is enabled
-      if (import.meta.env.VITE_USE_TEST_CLIENT) {
-        const backend = Comlink.wrap<WorkerAPI>(
-          new Worker(new URL('../worker.ts', import.meta.url), { type: 'module' })
-        );
-        const onUpdateCallback = Comlink.proxy((data: any) => {
-          if (data.type === 'systemInfo') {
-            Object.assign(this.device, data.data);
-            this.history.unshift({
-              time: data.timestamp || new Date(),
-              v: data.data.voltage,
-              i: data.data.current,
-              p: data.data.power,
-            });
-            if (this.history.length > 1000) {
-              this.history.pop();
-            }
-          }
+    async autoConnect() {
+      // Try to auto-connect with test client if enabled
+      const onUpdateCallback = Comlink.proxy((data: any) => {
+        Object.assign(this.device, data);
+        this.history.unshift({
+          time: new Date(),
+          v: data.outputVoltage || 0,
+          i: data.outputCurrent || 0,
+          p: data.outputPower || 0,
         });
-        await backend.connectTest(onUpdateCallback);
-        const deviceInfo = await backend.getDeviceInfo();
-        Object.assign(this.device, deviceInfo);
-        // Create a more realistic fake port object for test mode
-        this.port = {
-          readable: {},
-          writable: {},
-          open: () => Promise.resolve(),
-          close: () => Promise.resolve(),
-          getInfo: () => ({ usbVendorId: 0x1234, usbProductId: 0x5678 })
-        } as unknown as SerialPort;
-        return;
-      }
+        if (this.history.length > 10000) {
+          this.history.splice(10000);
+        }
+      });
 
-      // Normal mode - present connect button, don't auto-connect
-      console.log('Web Serial mode - click connect button to connect to device');
-    },    async start(p: SerialPort) {
+      await backend.autoConnect(onUpdateCallback);
+      this.port = {} as SerialPort; // Mock port reference
+      const deviceInfo = await backend.getDeviceInfo();
+      Object.assign(this.device, deviceInfo);
+
+      // Ensure output is enabled to match the mock data
+      await backend.enable();
+
+      return true;
+    },
+
+    async start(p: SerialPort) {
       if (!p) return;
       this.port = p;
 
@@ -115,21 +101,20 @@ export const useDeviceStore = defineStore('device', {
         return;
       }
 
-      await backend.connect(
-        p.readable,
-        p.writable,
-        Comlink.proxy((data: any) => {
-          Object.assign(this.device, data);
-          this.history.unshift({
-            time: new Date(),
-            v: data.outputVoltage,
-            i: data.outputCurrent,
-            p: data.outputPower,
-          });
+      const onUpdateCallback = Comlink.proxy((data: any) => {
+        Object.assign(this.device, data);
+        this.history.unshift({
+          time: new Date(),
+          v: data.outputVoltage || 0,
+          i: data.outputCurrent || 0,
+          p: data.outputPower || 0,
+        });
+        if (this.history.length > 10000) {
           this.history.splice(10000);
-        })
-      );
-      Comlink.transfer(backend, [p.readable, p.writable]);
+        }
+      });
+
+      await backend.connect(p, onUpdateCallback);
       const deviceInfo = await backend.getDeviceInfo();
       Object.assign(this.device, deviceInfo);
     },

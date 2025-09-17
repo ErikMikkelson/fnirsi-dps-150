@@ -1121,13 +1121,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vue/devtools-api@npm:^6.6.4":
-  version: 6.6.4
-  resolution: "@vue/devtools-api@npm:6.6.4"
-  checksum: 10c0/0a993ae23618166e1bee5a7c14cebd8312752b93c143cbdd48fb2d0f7ade070d0e6baf757cd920d4681fef8f9acf29515162160f38cc7410f9a684d2df21b6de
-  languageName: node
-  linkType: hard
-
 "@vue/devtools-api@npm:^7.7.2":
   version: 7.7.7
   resolution: "@vue/devtools-api@npm:7.7.7"
@@ -2456,8 +2449,7 @@ __metadata:
     vite-plugin-vuetify: "npm:^2.1.2"
     vitest: "npm:^3.2.4"
     vue: "npm:^3.5.21"
-    vue-router: "npm:4.5.1"
-    vuetify: "npm:^3.10.1"
+    vuetify: "npm:^3.10.2"
   languageName: unknown
   linkType: soft
 
@@ -5040,17 +5032,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vue-router@npm:4.5.1":
-  version: 4.5.1
-  resolution: "vue-router@npm:4.5.1"
-  dependencies:
-    "@vue/devtools-api": "npm:^6.6.4"
-  peerDependencies:
-    vue: ^3.2.0
-  checksum: 10c0/89fbc11e46c19a4c4d62b807596a0210726dc09bd9e6a319ded1ac0951e6933e581c56acd1b846d3891673b9bad7348564d28ecd8424126d63578b3b5d291d96
-  languageName: node
-  linkType: hard
-
 "vue@npm:^3.5.21":
   version: 3.5.21
   resolution: "vue@npm:3.5.21"
@@ -5069,9 +5050,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vuetify@npm:^3.10.1":
-  version: 3.10.1
-  resolution: "vuetify@npm:3.10.1"
+"vuetify@npm:^3.10.2":
+  version: 3.10.2
+  resolution: "vuetify@npm:3.10.2"
   peerDependencies:
     typescript: ">=4.7"
     vite-plugin-vuetify: ">=2.1.0"
@@ -5084,7 +5065,7 @@ __metadata:
       optional: true
     webpack-plugin-vuetify:
       optional: true
-  checksum: 10c0/ecf1954d9f6c25ec9fe3c972c3668018a1a3cdd5c5c2239682a4d7e58476bf97c152a32b47f093086fd7fffe804541b950cd41bbfad1b522cc1a4da20e3e4140
+  checksum: 10c0/2605d20b0e68d6fb8b85a3a96d177367af77435eb9ffa9fefd938b97cbf79cc5eb41cefc740bf0290e599a07c3f4a86172f97ffeb975cc288537c2a593359ed2
   languageName: node
   linkType: hard
 

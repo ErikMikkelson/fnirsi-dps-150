@@ -5,6 +5,7 @@ import {
   CMD_SET,
   CMD_XXX_176,
   CMD_XXX_193,
+  DataType,
   FIRMWARE_VERSION,
   HARDWARE_VERSION,
   HEADER_INPUT,
@@ -218,39 +219,39 @@ export class DPS150Client implements DeviceClient {
 		const { callback } = this;
 		const view = new DataView(c5.buffer, c5.byteOffset, c5.byteLength);
 		switch (c3) {
-			case 192: // input voltage
+			case DataType.INPUT_VOLTAGE:
 				callback({ inputVoltage: view.getFloat32(0, true) });
 				if (this.responsePromises.has(c3)) {
 					this.responsePromises.get(c3)?.resolve(view.getFloat32(0, true));
 					this.responsePromises.delete(c3);
 				}
 				break;
-			case 195: // output voltage, current, power
+			case DataType.OUTPUT_VOLTAGE_CURRENT_POWER:
 				callback({
 					outputVoltage: view.getFloat32(0, true),
 					outputCurrent: view.getFloat32(4, true),
 					outputPower: view.getFloat32(8, true),
 				});
 				break;
-			case 196: // temperature
+			case DataType.TEMPERATURE:
 				callback({ temperature: view.getFloat32(0, true) });
 				break;
-			case 217: // output capacity
+			case DataType.OUTPUT_CAPACITY:
 				callback({ outputCapacity: view.getFloat32(0, true) });
 				break;
-			case 218: // output energy
+			case DataType.OUTPUT_ENERGY:
 				callback({ outputEnergy: view.getFloat32(0, true) });
 				break;
-			case 219: // output closed?
+			case DataType.OUTPUT_ENABLED:
 				callback({ outputEnabled: c5[0] === 1 });
 				break;
-			case 220: // protection
+			case DataType.PROTECTION_STATE:
 				callback({ protectionState: PROTECTION_STATES[c5[0]] });
 				break;
-			case 221: // cc=0 or cv=1
+			case DataType.MODE_CC_CV:
 				callback({ mode: c5[0] === 0 ? "CC" : "CV" });
 				break;
-			case 222: // model name
+			case DataType.MODEL_NAME:
 				// d33
 				callback({ modelName: String.fromCharCode(...c5) });
 				if (this.responsePromises.has(c3)) {
@@ -258,7 +259,7 @@ export class DPS150Client implements DeviceClient {
 					this.responsePromises.delete(c3);
 				}
 				break;
-			case 223: // hardware version
+			case DataType.HARDWARE_VERSION:
 				// d34
 				callback({ hardwareVersion: String.fromCharCode(...c5) });
 				if (this.responsePromises.has(c3)) {
@@ -266,7 +267,7 @@ export class DPS150Client implements DeviceClient {
 					this.responsePromises.delete(c3);
 				}
 				break;
-			case 224: // firmware version
+			case DataType.FIRMWARE_VERSION:
 				// d35
 				callback({ firmwareVersion: String.fromCharCode(...c5) });
 				if (this.responsePromises.has(c3)) {
@@ -274,17 +275,17 @@ export class DPS150Client implements DeviceClient {
 					this.responsePromises.delete(c3);
 				}
 				break;
-			case 225: // ???
+			case DataType.UNKNOWN_225:
 				// d36
 				console.log(c3, c5[0]);
 				break;
-			case 226: // upper limit voltage
+			case DataType.UPPER_LIMIT_VOLTAGE:
 				callback({ upperLimitVoltage: view.getFloat32(0, true) });
 				break;
-			case 227: // upper limit current
+			case DataType.UPPER_LIMIT_CURRENT:
 				callback({ upperLimitCurrent: view.getFloat32(0, true) });
 				break;
-			case 255:
+			case DataType.ALL_DATA:
 				// set all
 				{
 					const d1 = view.getFloat32(0, true); // input voltage

@@ -31,7 +31,7 @@ const {
   port,
   device,
   history,
-  init,
+  autoConnect,
   connect,
   disconnect,
   enable,
@@ -78,6 +78,7 @@ const numberInput = reactive({
   units: [] as string[],
   input: '',
   prev: '' as number | string,
+  key: undefined as number | undefined,
 });
 
 const tab = ref(null);
@@ -170,19 +171,56 @@ watch(() => port, (newPort) => {
 }, { immediate: true });
 watch(graphOptions, updateGraph, { deep: true });
 
-onMounted(() => {
-  init();
+onMounted(async () => {
   programExamples.forEach((example) => {
     example.code = example.code.trim().replace(/\t+/g, '');
   });
   program.value = programExamples[0].code;
   updateGraph();
+
+  // Auto-connect in test mode
+  if (import.meta.env.VITE_USE_TEST_CLIENT === 'true') {
+    await autoConnect()
+  }
 });
 
 async function onNumberInput(value: number) {
   if (value) {
     await setFloatValue(numberInput.key, value);
   }
+}
+
+function openNumberInput(config: {
+  title: string;
+  description?: string;
+  descriptionHtml?: string;
+  units: string[];
+  input: number;
+  unit: string;
+  key?: number;
+}): Promise<number | null> {
+  return new Promise((resolve) => {
+    numberInput.title = config.title;
+    numberInput.description = config.description || '';
+    numberInput.descriptionHtml = config.descriptionHtml || '';
+    numberInput.units = config.units;
+    numberInput.prev = config.input;
+    numberInput.unit = config.unit;
+    numberInput.key = config.key;
+
+    showNumberInput.value = true;
+
+    // Set up a one-time listener for the input result
+    const cleanup = watch(
+      () => showNumberInput.value,
+      (isShown) => {
+        if (!isShown) {
+          cleanup();
+          resolve(numberInput.result ? Number(numberInput.result) : null);
+        }
+      }
+    );
+  });
 }
 
 async function changeVoltage() {
@@ -474,9 +512,12 @@ function downloadHistory() {
 
       <v-spacer></v-spacer>
 
-      <span class="ms-2">
-        {{ formatNumber(device.temperature) }}℃ Input: {{ formatNumber(device.inputVoltage) }}V
-      </span>
+      <v-chip color="blue" variant="flat" class="me-2">
+        {{ formatNumber(device.temperature) }}℃
+      </v-chip>
+      <v-chip color="orange" variant="flat" class="me-2">
+        Input: {{ formatNumber(device.inputVoltage) }}V
+      </v-chip>
 
       <v-btn class="connect" icon variant="flat" color="red" @click="connect" v-if="!port">
         <v-icon>mdi-lan-disconnect</v-icon>
@@ -621,14 +662,14 @@ function downloadHistory() {
 /* <weight>: Use a value from 100 to 900 */
 
 .noto-sans-jp-normal {
-  font-family: 'Noto Sans JP', serif;
+  font-family: 'Noto Sans JP', sans-serif;
   font-optical-sizing: auto;
   font-weight: 600;
   font-style: normal;
 }
 
 body {
-  font-family: 'Noto Sans JP', serif;
+  font-family: 'Noto Sans JP', sans-serif;
   font-optical-sizing: auto;
   font-weight: 600;
   font-style: normal;

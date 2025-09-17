@@ -1,11 +1,8 @@
 <script setup lang="ts">
+import { computed } from 'vue';
+import { useDeviceStore } from '../store/device';
 
-
-defineProps({
-  port: {
-    type: Object,
-    default: null,
-  },
+const props = defineProps({
   device: {
     type: Object,
     required: true,
@@ -13,6 +10,13 @@ defineProps({
 });
 
 const emit = defineEmits(['change-voltage', 'change-current']);
+
+const deviceStore = useDeviceStore();
+
+// Check if we're in test mode or actually connected
+const isConnected = computed(() => {
+  return !!import.meta.env.VITE_USE_TEST_CLIENT || !!deviceStore.port;
+});
 
 function formatNumber(n: number) {
   if (n < 10) {
@@ -36,26 +40,26 @@ function formatProtectionState(state: string) {
 </script>
 
 <template>
-  <div v-if="device" class="main-view" :class="{ enabled: device.outputEnabled }" style="width: 300px">
+  <div v-if="device" class="main-view" :class="{ enabled: device.outputEnabled && isConnected }" style="width: 300px">
     <div class="changeable voltage" @click="emit('change-voltage')">
-      <span>{{ port ? formatNumber(device.outputVoltage || 0) : '-' }}</span><span class="unit">V</span>
+      <span>{{ formatNumber(device.outputVoltage || 0) }}</span><span class="unit">V</span>
       <div class="set">
         vset <span>{{ formatNumber(device.setVoltage || 0) }}</span><span class="unit">V</span>
       </div>
     </div>
     <div class="changeable current" @click="emit('change-current')">
-      <span>{{ port ? formatNumber(device.outputCurrent || 0) : '-' }}</span><span class="unit">A</span>
+      <span>{{ formatNumber(device.outputCurrent || 0) }}</span><span class="unit">A</span>
       <div class="set">
         cset <span>{{ formatNumber(device.setCurrent || 0) }}</span><span class="unit">A</span>
       </div>
     </div>
     <div class="power">
-      <span>{{ port ? formatNumber(device.outputPower || 0) : '-' }}</span><span class="unit">W</span>
+      <span>{{ formatNumber(device.outputPower || 0) }}</span><span class="unit">W</span>
     </div>
-    <v-chip :class="{ current: device.mode === 'CC', voltage: device.mode === 'CV' }" variant="flat" size="large">
-      {{ device.mode || 'Unknown' }}
+    <v-chip :class="{ current: device.cv_cc === 'CC', voltage: device.cv_cc === 'CV' }" variant="flat" size="large">
+      {{ device.cv_cc || 'CV' }}
       <v-tooltip activator="parent" location="start">
-        {{ device.mode === 'CC' ? 'Constant Current' : device.mode === 'CV' ? 'Constant Voltage' : 'Unknown Mode' }}
+        {{ device.cv_cc === 'CC' ? 'Constant Current' : device.cv_cc === 'CV' ? 'Constant Voltage' : 'Constant Voltage' }}
       </v-tooltip>
     </v-chip>
     <v-chip :color="device.protectionState ? 'red' : 'green'" variant="flat" size="large">

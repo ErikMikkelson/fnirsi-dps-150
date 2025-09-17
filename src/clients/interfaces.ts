@@ -95,6 +95,5 @@ export interface DeviceClient {
   close(): Promise<void>;
   start?(): Promise<void>;
   init?(onUpdate: (data: any) => void): Promise<void>;
-  connectTest?(): Promise<void>;
 }
 

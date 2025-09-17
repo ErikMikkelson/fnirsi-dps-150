@@ -1,26 +1,26 @@
 import * as Comlink from 'comlink';
 
 import { DPS150Client } from './clients/dps-150-client';
-import { TestDPS150Client } from './clients/test-dps-150-client';
+import { MockDPS150SerialPort } from './serial-ports/mock-serial-port';
 
-let dps: DPS150Client | TestDPS150Client | null = null;
+let dps: DPS150Client | null = null;
 
 const exposed = {
-  async connect(readable: ReadableStream<Uint8Array>, writable: WritableStream<Uint8Array>, onUpdate: (data: any) => void) {
-    dps = new DPS150Client(readable, writable, onUpdate);
+  async autoConnect(onUpdate: (data: any) => void) {
+    const mockPort = new MockDPS150SerialPort()
+    dps = new DPS150Client(mockPort, onUpdate)
+    await dps.start()
+    console.log('Auto-connected to mock DPS-150')
+  },
+
+  async connect(port: SerialPort, onUpdate: (data: any) => void) {
+    dps = new DPS150Client(port, onUpdate);
     await dps.start();
     return true;
   },
-  async connectTest(onUpdate: (data: any) => void) {
-    dps = new TestDPS150Client();
-    await dps.init(onUpdate);
-    // Start the test data simulation
-    await (dps as TestDPS150Client).connectTest();
-    return true;
-  },
+
   async disconnect() {
     if (dps) {
-      // @ts-ignore
       await dps.close();
       dps = null;
     }
