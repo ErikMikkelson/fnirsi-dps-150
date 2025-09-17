@@ -1,25 +1,41 @@
 import * as Comlink from 'comlink';
 import { defineStore } from 'pinia';
+import { wrap } from 'comlink';
+import type { WorkerAPI } from '../worker';
 
-import type { WorkerAPI } from '../core/worker';
+import {
+  VOLTAGE_SET,
+  CURRENT_SET,
+  OVP,
+  OCP,
+  BRIGHTNESS,
+} from '../clients/constants';
 
-const worker = new Worker(new URL('../core/worker.ts', import.meta.url), {
+const worker = new Worker(new URL('../worker.ts', import.meta.url), {
   type: 'module',
 });
-const backend = Comlink.wrap<WorkerAPI>(worker);
+
+const backend = wrap<WorkerAPI>(worker);
 
 export const useDeviceStore = defineStore('device', {
   state: () => ({
     port: null as SerialPort | null,
-    dps: backend,
     device: {
-      inputVoltage: 0,
+      model: '',
+      serialNumber: '',
+      firmwareVersion: '',
+      upperLimitVoltage: 0,
+      upperLimitCurrent: 0,
       setVoltage: 0,
       setCurrent: 0,
-      outputVoltage: 0,
-      outputCurrent: 0,
-      outputPower: 0,
+      voltage: 0,
+      current: 0,
+      power: 0,
+      inputVoltage: 0,
       temperature: 0,
+      outputEnabled: false,
+      cv_cc: 'CV',
+      protectionState: '',
       group1setVoltage: 0,
       group1setCurrent: 0,
       group2setVoltage: 0,
@@ -39,19 +55,12 @@ export const useDeviceStore = defineStore('device', {
       lowVoltageProtection: 0,
       brightness: 0,
       volume: 0,
-      meteringClosed: false,
-      outputCapacity: 0,
-      outputEnergy: 0,
-      outputEnabled: false,
-      protectionState: '',
-      mode: 'CV',
-      upperLimitVoltage: 0,
-      upperLimitCurrent: 0,
-      modelName: '',
-      firmwareVersion: '',
-      hardwareVersion: '',
     },
     history: [] as { time: Date; v: number; i: number; p: number }[],
+    program: {
+      running: false,
+      remaining: 0,
+    },
   }),
 
   actions: {
@@ -59,16 +68,15 @@ export const useDeviceStore = defineStore('device', {
       if (!navigator.serial) {
         // Use test client
         console.log('Using TestDPS150 client');
-        await this.dps.connectTest(
+        await backend.connectTest(
           Comlink.proxy((data: any) => {
-            console.log('Received data from test client:', data);
             if (data.type === 'systemInfo') {
               Object.assign(this.device, data.data);
               this.history.unshift({
                 time: new Date(),
-                v: data.data.outputVoltage,
-                i: data.data.outputCurrent,
-                p: data.data.outputPower,
+                v: data.data.voltage,
+                i: data.data.current,
+                p: data.data.power,
               });
               if (this.history.length > 1000) {
                 this.history.pop();
@@ -76,7 +84,7 @@ export const useDeviceStore = defineStore('device', {
             }
           })
         );
-        const deviceInfo = await this.dps.getDeviceInfo();
+        const deviceInfo = await backend.getDeviceInfo();
         Object.assign(this.device, deviceInfo);
         this.port = {} as SerialPort; // Fake port
         return;
@@ -91,21 +99,21 @@ export const useDeviceStore = defineStore('device', {
       if (!p) return;
       this.port = p;
 
-      await this.dps.connect(
+      await backend.connect(
         p,
         Comlink.proxy((data: any) => {
-          if (data.type === 'systemInfo') {
-            Object.assign(this.device, data.data);
-            this.history.unshift({
-              time: new Date(),
-              v: data.data.outputVoltage,
-              i: data.data.outputCurrent,
-              p: data.data.outputPower,
-            });
-            this.history.splice(10000);
-          }
+          Object.assign(this.device, data);
+          this.history.unshift({
+            time: new Date(),
+            v: data.outputVoltage,
+            i: data.outputCurrent,
+            p: data.outputPower,
+          });
+          this.history.splice(10000);
         })
       );
+      const deviceInfo = await backend.getDeviceInfo();
+      Object.assign(this.device, deviceInfo);
     },
 
     async connect() {
@@ -114,43 +122,56 @@ export const useDeviceStore = defineStore('device', {
 
     async disconnect() {
       if (this.port) {
-        await this.dps.disconnect();
+        await backend.disconnect();
         this.port = null;
       }
     },
 
-    async setV(v: number) {
-      await this.dps.setFloatValue(193, v);
+    async enable() {
+      await backend.enable();
     },
 
-    async setI(i: number) {
-      await this.dps.setFloatValue(194, i);
+    async disable() {
+      await backend.disable();
     },
 
-    async setOVP(v: number) {
-      await this.dps.setFloatValue(195, v);
+    async startMetering() {
+      await backend.startMetering();
     },
 
-    async setOCP(i: number) {
-      await this.dps.setFloatValue(196, i);
+    async stopMetering() {
+      await backend.stopMetering();
     },
 
-    async setBrightness(b: number) {
-      await this.dps.setByteValue(203, b);
+    async setFloatValue(command: number, value: number) {
+      await backend.setFloatValue(command, value);
     },
 
-    async execute(commands: any[], onProgress: (n: number) => void) {
-      await this.dps.executeCommands(commands, Comlink.proxy(onProgress));
+    async setByteValue(command: number, value: number) {
+      await backend.setByteValue(command, value);
     },
 
-    async abortExecute() {
+    async executeCommands(
+      commands: any[],
+      onProgress: (n: number) => void = () => {}
+    ) {
+      this.program.running = true;
+      await backend.executeCommands(commands, Comlink.proxy(onProgress));
+      this.program.running = false;
+    },
+
+    async abortExecuteCommands() {
       // This functionality doesn't exist in the worker, so we just disconnect
       // to stop whatever is happening. A better implementation would be to have
       // an abort signal in the worker.
-      await this.dps.disconnect();
+      await backend.disconnect();
       if (this.port) {
         await this.start(this.port);
       }
+    },
+
+    resetHistory() {
+      this.history = [];
     },
   },
 });

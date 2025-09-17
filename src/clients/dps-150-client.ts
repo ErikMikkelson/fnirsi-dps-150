@@ -1,128 +1,25 @@
 import { sleep } from '../utils';
-import { DeviceClient } from './device-client';
-
-const HEADER_INPUT  = 0xf0; // 240
-const HEADER_OUTPUT = 0xf1; // 241
-
-const CMD_GET     = 0xa1; // 161
-const CMD_XXX_176 = 0xb0; // 176
-const CMD_SET     = 0xb1; // 177
-const CMD_XXX_192 = 0xc0; // 192
-const CMD_XXX_193 = 0xc1; // 193
-
-// float
-export const VOLTAGE_SET = 193;
-export const CURRENT_SET = 194;
-
-export const GROUP1_VOLTAGE_SET = 197;
-export const GROUP1_CURRENT_SET = 198;
-export const GROUP2_VOLTAGE_SET = 199;
-export const GROUP2_CURRENT_SET = 200;
-export const GROUP3_VOLTAGE_SET = 201;
-export const GROUP3_CURRENT_SET = 202;
-export const GROUP4_VOLTAGE_SET = 203;
-export const GROUP4_CURRENT_SET = 204;
-export const GROUP5_VOLTAGE_SET = 205;
-export const GROUP5_CURRENT_SET = 206;
-export const GROUP6_VOLTAGE_SET = 207;
-export const GROUP6_CURRENT_SET = 208;
-
-export const OVP = 209;
-export const OCP = 210;
-export const OPP = 211;
-export const OTP = 212;
-export const LVP = 213;
-
-const METERING_ENABLE = 216;
-const OUTPUT_ENABLE = 219;
-
-// byte
-export const BRIGHTNESS = 214;
-export const VOLUME = 215;
-
-const MODEL_NAME = 222;
-const HARDWARE_VERSION = 223;
-const FIRMWARE_VERSION = 224;
-const ALL = 255;
-
-export const DPS150Commands = {
-  VOLTAGE_SET,
-  CURRENT_SET,
-  GROUP1_VOLTAGE_SET,
-  GROUP1_CURRENT_SET,
-  GROUP2_VOLTAGE_SET,
-  GROUP2_CURRENT_SET,
-  GROUP3_VOLTAGE_SET,
-  GROUP3_CURRENT_SET,
-  GROUP4_VOLTAGE_SET,
-  GROUP4_CURRENT_SET,
-  GROUP5_VOLTAGE_SET,
-  GROUP5_CURRENT_SET,
-  GROUP6_VOLTAGE_SET,
-  GROUP6_CURRENT_SET,
-  OVP,
-  OCP,
-  OPP,
-  OTP,
-  LVP,
-  BRIGHTNESS,
-  VOLUME,
-};
-
-const PROTECTION_STATES = [
-	"",
-	"OVP",
-	"OCP",
-	"OPP",
-	"OTP",
-	"LVP",
-	"REP",
-];
-
-export interface SystemInfo {
-  outputEnabled: boolean;
-  cv_cc: 'CV' | 'CC';
-  protectionState: string;
-  voltage: number;
-  current: number;
-  power: number;
-  inputVoltage: number;
-  temperature: number;
-}
-
-export interface DeviceInfo {
-  model: string;
-  serialNumber: string;
-  firmwareVersion: string;
-  upperLimitVoltage: number;
-  upperLimitCurrent: number;
-  setVoltage: number;
-  setCurrent: number;
-  group1setVoltage: number;
-  group1setCurrent: number;
-  group2setVoltage: number;
-  group2setCurrent: number;
-  group3setVoltage: number;
-  group3setCurrent: number;
-  group4setVoltage: number;
-  group4setCurrent: number;
-  group5setVoltage: number;
-  group5setCurrent: number;
-  group6setVoltage: number;
-  group6setCurrent: number;
-  overVoltageProtection: number;
-  overCurrentProtection: number;
-  overPowerProtection: number;
-  overTemperatureProtection: number;
-  lowVoltageProtection: number;
-  brightness: number;
-  volume: number;
-}
-
-export interface GroupValue {
-  setVoltage: number;
-  setCurrent: number;
-}
+import {
+  ALL,
+  CMD_GET,
+  CMD_SET,
+  CMD_XXX_176,
+  CMD_XXX_193,
+  FIRMWARE_VERSION,
+  HARDWARE_VERSION,
+  HEADER_INPUT,
+  HEADER_OUTPUT,
+  METERING_ENABLE,
+  MODEL_NAME,
+  OUTPUT_ENABLE,
+  PROTECTION_STATES,
+} from './constants';
+import {
+  DeviceClient,
+  DeviceInfo,
+  GroupValue,
+  SystemInfo,
+} from './interfaces';
 
 interface DeviceData {
   inputVoltage?: number;
@@ -166,7 +63,7 @@ interface DeviceData {
 
 export type DPS150Callback = (data: DeviceData) => void;
 
-export class DPS150 implements DeviceClient {
+export class DPS150Client implements DeviceClient {
 	private port: SerialPort;
 	private callback: DPS150Callback;
 	private reader: ReadableStreamDefaultReader<Uint8Array> | undefined;

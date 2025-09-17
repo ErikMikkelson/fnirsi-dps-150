@@ -1,12 +1,12 @@
-import { DeviceClient } from './device-client';
+import { DPS150Commands } from './constants';
 import {
+  DeviceClient,
   DeviceInfo,
-  DPS150Commands,
   GroupValue,
   SystemInfo,
-} from './dps-150';
+} from './interfaces';
 
-export class TestDPS150 implements DeviceClient {
+export class TestDPS150Client implements DeviceClient {
   private intervalId: NodeJS.Timeout | null = null;
   private onUpdate: ((data: any) => void) | null = null;
   private time = 0;

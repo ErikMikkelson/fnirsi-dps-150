@@ -10,9 +10,9 @@ import {
 
 import {
   CURRENT_SET,
-  DPS150,
   VOLTAGE_SET,
-} from '../src/core/dps-150';
+} from '../src/clients/constants';
+import { DPS150Client } from '../src/clients/dps-150-client';
 import {
   createCommandPacket,
   createFloatCommandPacket,
@@ -24,12 +24,12 @@ import { MockSerialPort } from './mocks/webSerial';
 describe('DPS150', () => {
   let mockPort: MockSerialPort;
   let callback: Mock;
-  let dps: DPS150;
+  let dps: DPS150Client;
 
   beforeEach(() => {
     mockPort = new MockSerialPort();
     callback = vi.fn();
-    dps = new DPS150(mockPort as any, callback);
+    dps = new DPS150Client(mockPort as any, callback);
   });
 
   describe('sendCommand', () => {

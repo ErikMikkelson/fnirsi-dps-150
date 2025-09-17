@@ -1,18 +1,18 @@
 import * as Comlink from 'comlink';
 
-import { DPS150 } from './dps-150';
-import { TestDPS150 } from './dps-150.test-client';
+import { DPS150Client } from './clients/dps-150-client';
+import { TestDPS150Client } from './clients/test-dps-150-client';
 
-let dps: DPS150 | TestDPS150 | null = null;
+let dps: DPS150Client | TestDPS150Client | null = null;
 
 const exposed = {
   async connect(port: SerialPort, onUpdate: (data: any) => void) {
-    dps = new DPS150(port, onUpdate);
+    dps = new DPS150Client(port, onUpdate);
     await dps.start();
     return true;
   },
   async connectTest(onUpdate: (data: any) => void) {
-    dps = new TestDPS150();
+    dps = new TestDPS150Client();
     await dps.init(onUpdate);
     return true;
   },

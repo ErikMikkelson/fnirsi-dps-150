@@ -14,7 +14,7 @@ import {
   LVP,
   BRIGHTNESS,
   VOLUME,
-} from './core/dps-150.ts';
+} from './clients/constants';
 import { functionWithTimeout } from './utils';
 import Graph from './components/Graph.vue';
 import NumberInput from './components/NumberInput.vue';
