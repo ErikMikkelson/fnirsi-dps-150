@@ -203,9 +203,9 @@ function openNumberInput(config: {
     numberInput.prev = config.input;
     numberInput.unit = config.unit;
     numberInput.key = config.key;
-    
+
     showNumberInput.value = true;
-    
+
     // Set up a one-time listener for the input result
     const cleanup = watch(
       () => showNumberInput.value,
