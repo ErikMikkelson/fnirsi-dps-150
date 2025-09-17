@@ -156,8 +156,12 @@ function updateGraph() {
 
 watch(history, updateGraph, { deep: true });
 watch(() => port, (newPort) => {
-  console.log('Port changed:', newPort, 'Setting connectOverlay to:', !newPort);
-  connectOverlay.value = !newPort;
+  // In test mode, don't show overlay if we're using test client
+  if (import.meta.env.VITE_USE_TEST_CLIENT) {
+    connectOverlay.value = false;
+  } else {
+    connectOverlay.value = !newPort;
+  }
 }, { immediate: true });
 watch(graphOptions, updateGraph, { deep: true });
 

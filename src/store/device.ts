@@ -92,7 +92,6 @@ export const useDeviceStore = defineStore('device', {
           close: () => Promise.resolve(),
           getInfo: () => ({ usbVendorId: 0x1234, usbProductId: 0x5678 })
         } as unknown as SerialPort;
-        console.log('Test mode: port set to:', this.port);
         return;
       }
 
