@@ -37,10 +37,7 @@ export class DPS150Client implements DeviceClient {
 	}
 
 	async start(): Promise<void> {
-		// The official Web Serial API does not have an `isOpen` property.
-		// The common pattern is to just call `open()` and handle exceptions.
-		// Here, we add a check for readable to avoid re-opening if start is called twice.
-		if (!this.port.readable?.locked) {
+		try {
 			await this.port.open({
 				baudRate: 115200,
 				bufferSize: 1024,
@@ -49,6 +46,9 @@ export class DPS150Client implements DeviceClient {
 				flowControl: 'hardware',
 				parity: 'none'
 			});
+		} catch (error) {
+			// Port might already be open, ignore the error
+			console.log('Port open error (might already be open):', error);
 		}
 		console.log('start', this.port);
 		this.startReader();
