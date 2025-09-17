@@ -38,6 +38,45 @@ export interface DeviceInfo {
   volume: number;
 }
 
+export interface DeviceData {
+  inputVoltage?: number;
+  outputVoltage?: number;
+  outputCurrent?: number;
+  outputPower?: number;
+  temperature?: number;
+  outputCapacity?: number;
+  outputEnergy?: number;
+  outputEnabled?: boolean;
+  protectionState?: string;
+  mode?: "CC" | "CV";
+  modelName?: string;
+  hardwareVersion?: string;
+  firmwareVersion?: string;
+  upperLimitVoltage?: number;
+  upperLimitCurrent?: number;
+  setVoltage?: number;
+  setCurrent?: number;
+  group1setVoltage?: number;
+  group1setCurrent?: number;
+  group2setVoltage?: number;
+  group2setCurrent?: number;
+  group3setVoltage?: number;
+  group3setCurrent?: number;
+  group4setVoltage?: number;
+  group4setCurrent?: number;
+  group5setVoltage?: number;
+  group5setCurrent?: number;
+  group6setVoltage?: number;
+  group6setCurrent?: number;
+  overVoltageProtection?: number;
+  overCurrentProtection?: number;
+  overPowerProtection?: number;
+  overTemperatureProtection?: number;
+  lowVoltageProtection?: number;
+  brightness?: number;
+  volume?: number;
+  meteringClosed?: boolean;
+}
 export interface GroupValue {
   setVoltage: number;
   setCurrent: number;

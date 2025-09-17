@@ -16,50 +16,11 @@ import {
 } from './constants';
 import {
   DeviceClient,
+  DeviceData,
   DeviceInfo,
   GroupValue,
   SystemInfo,
 } from './interfaces';
-
-interface DeviceData {
-  inputVoltage?: number;
-  outputVoltage?: number;
-  outputCurrent?: number;
-  outputPower?: number;
-  temperature?: number;
-  outputCapacity?: number;
-  outputEnergy?: number;
-  outputEnabled?: boolean;
-  protectionState?: string;
-  mode?: "CC" | "CV";
-  modelName?: string;
-  hardwareVersion?: string;
-  firmwareVersion?: string;
-  upperLimitVoltage?: number;
-  upperLimitCurrent?: number;
-  setVoltage?: number;
-  setCurrent?: number;
-  group1setVoltage?: number;
-  group1setCurrent?: number;
-  group2setVoltage?: number;
-  group2setCurrent?: number;
-  group3setVoltage?: number;
-  group3setCurrent?: number;
-  group4setVoltage?: number;
-  group4setCurrent?: number;
-  group5setVoltage?: number;
-  group5setCurrent?: number;
-  group6setVoltage?: number;
-  group6setCurrent?: number;
-  overVoltageProtection?: number;
-  overCurrentProtection?: number;
-  overPowerProtection?: number;
-  overTemperatureProtection?: number;
-  lowVoltageProtection?: number;
-  brightness?: number;
-  volume?: number;
-  meteringClosed?: boolean;
-}
 
 export type DPS150Callback = (data: DeviceData) => void;
 
@@ -76,7 +37,10 @@ export class DPS150Client implements DeviceClient {
 	}
 
 	async start(): Promise<void> {
-		if (!this.port.readable || !this.port.writable) {
+		// The official Web Serial API does not have an `isOpen` property.
+		// The common pattern is to just call `open()` and handle exceptions.
+		// Here, we add a check for readable to avoid re-opening if start is called twice.
+		if (!this.port.readable?.locked) {
 			await this.port.open({
 				baudRate: 115200,
 				bufferSize: 1024,
