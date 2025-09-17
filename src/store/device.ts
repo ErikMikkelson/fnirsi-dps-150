@@ -61,7 +61,7 @@ export const useDeviceStore = defineStore('device', {
       // Debug: log environment variable
       console.log('VITE_USE_TEST_CLIENT:', import.meta.env.VITE_USE_TEST_CLIENT);
       console.log('All env vars:', import.meta.env);
-      
+
       // Check for test mode environment variable
       if (import.meta.env.VITE_USE_TEST_CLIENT) {
         // Use test client for local development
@@ -97,7 +97,7 @@ export const useDeviceStore = defineStore('device', {
         console.log('Device state after test client setup:', this.device);
         return;
       }
-      
+
       // Normal mode - present connect button, don't auto-connect
       console.log('Web Serial mode - click connect button to connect to device');
     },    async start(p: SerialPort) {

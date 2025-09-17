@@ -156,8 +156,8 @@ function updateGraph() {
 
 watch(history, updateGraph, { deep: true });
 watch(() => port, (newPort) => {
-  // connectOverlay.value = !newPort;
-}, { immediate: false });
+  connectOverlay.value = !newPort;
+}, { immediate: true });
 watch(graphOptions, updateGraph, { deep: true });
 
 onMounted(() => {
