@@ -54,13 +54,13 @@ export class MockDPS150SerialPort extends EventTarget implements SerialPort {
     setVoltage: 5.0,
     setCurrent: 1.0,
     outputEnabled: true,
-    
+
     // Live measurements (start close to target for quicker convergence)
     outputVoltage: 4.5,
     outputCurrent: 0.5,
     inputVoltage: 20.0,
     temperature: 30.0,
-    
+
     // Memory group presets (like original test client)
     group1setVoltage: 1.0,
     group1setCurrent: 0.1,
@@ -193,14 +193,14 @@ export class MockDPS150SerialPort extends EventTarget implements SerialPort {
           this.mockData.setVoltage = view.getFloat32(0, true);
         }
         break;
-      
+
       case CMD_SET_CURRENT:
         if (dataLen === 4) {
           const view = new DataView(command.buffer, command.byteOffset + 4, 4);
           this.mockData.setCurrent = view.getFloat32(0, true);
         }
         break;
-      
+
       case CMD_OUTPUT_ENABLE:
         if (dataLen === 1) {
           this.mockData.outputEnabled = command[4] === 1;
@@ -219,7 +219,7 @@ export class MockDPS150SerialPort extends EventTarget implements SerialPort {
 
   private createResponsePacket(): Uint8Array {
     const response = new Uint8Array(RESPONSE_PACKET_SIZE);
-    
+
     // Packet header
     response[0] = HEADER_INPUT;
     response[1] = CMD_GET;
@@ -228,7 +228,7 @@ export class MockDPS150SerialPort extends EventTarget implements SerialPort {
 
     // Fill data payload
     this.fillDataPayload(response);
-    
+
     // Calculate and set checksum
     this.setChecksum(response);
 
