@@ -64,27 +64,21 @@ interface DeviceData {
 export type DPS150Callback = (data: DeviceData) => void;
 
 export class DPS150Client implements DeviceClient {
-	private port: SerialPort;
+	private readable: ReadableStream<Uint8Array>;
+	private writable: WritableStream<Uint8Array>;
 	private callback: DPS150Callback;
 	private reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
 	private responsePromises: Map<number, { resolve: (value: any) => void, reject: (reason?: any) => void }> = new Map();
 
 
-	constructor(port: SerialPort, callback: DPS150Callback) {
-		this.port = port;
+	constructor(readable: ReadableStream<Uint8Array>, writable: WritableStream<Uint8Array>, callback: DPS150Callback) {
+		this.readable = readable;
+		this.writable = writable;
 		this.callback = callback;
 	}
 
 	async start(): Promise<void> {
-		console.log('start', this.port);
-		await this.port.open({
-			baudRate: 115200,
-			bufferSize: 1024,
-			dataBits: 8,
-			stopBits: 1,
-			flowControl: 'hardware',
-			parity: 'none'
-		});
+		console.log('start');
 		this.startReader();
 		await this.initCommand();
 	}
@@ -95,64 +89,60 @@ export class DPS150Client implements DeviceClient {
 		if (this.reader) {
 			await this.reader.cancel();
 		}
-		await this.port.close();
-
 	}
 
 	async startReader(): Promise<void> {
 		console.log('reading...');
 		let buffer = new Uint8Array();
-		while (this.port.readable) {
-			const reader = this.port.readable.getReader();
-			this.reader = reader;
-			try {
-				while (true) {
-					const { value, done } = await reader.read();
-					if (done || !value) {
-						console.log('done');
-						return;
-					}
-					const b = new Uint8Array(buffer.length + value.length);
-					b.set(buffer);
-					b.set(value, buffer.length);
-					buffer = b;
-					for (let i = 0; i < buffer.length - 6; i++) {
-						if (buffer[i] === HEADER_INPUT && buffer[i+1] === CMD_GET) {
-							const c1 = buffer[i];
-							const c2 = buffer[i+1];
-							const c3 = buffer[i+2];
-							const c4 = buffer[i+3];
-							if (i+c4 >= buffer.length) {
-								break
-							}
-							const c5 = new Uint8Array(buffer.subarray(i+4, i+4+c4));
-							const c6 = buffer[i+4+c4];
-
-							let s6 = c3 + c4;
-							for (let j = 0; j < c4; j++) {
-								s6 += c5[j];
-							};
-							s6 %= 0x100;
-							if (s6 != c6) {
-								// console.log('checksum error', s6, c6, Array.from(c5).map(v => v.toString(16)).join(" "));
-								buffer = buffer.subarray(i+1);
-								i = -1; // restart loop
-								continue;
-							}
-							// console.log('readData', c1, c2, c3, c4, Array.from(c5).map(v => v.toString(16)).join(" "), c6, '==', s6);
-							this.parseData(c1, c2, c3, c4, c5);
-							buffer = buffer.subarray(i+5+c4);
-							i = -1; // restart loop
-						}
-					}
-					// console.log('parseData', Array.from(buffer).map(v => v.toString(16)).join(" "));
-					// this.parseData(value);
+		const reader = this.readable.getReader();
+		this.reader = reader;
+		try {
+			while (true) {
+				const { value, done } = await reader.read();
+				if (done || !value) {
+					console.log('done');
+					return;
 				}
-			} catch (error) {
-				console.log(error);
-			} finally {
-				reader.releaseLock();
+				const b = new Uint8Array(buffer.length + value.length);
+				b.set(buffer);
+				b.set(value, buffer.length);
+				buffer = b;
+				for (let i = 0; i < buffer.length - 6; i++) {
+					if (buffer[i] === HEADER_INPUT && buffer[i+1] === CMD_GET) {
+						const c1 = buffer[i];
+						const c2 = buffer[i+1];
+						const c3 = buffer[i+2];
+						const c4 = buffer[i+3];
+						if (i+c4 >= buffer.length) {
+							break
+						}
+						const c5 = new Uint8Array(buffer.subarray(i+4, i+4+c4));
+						const c6 = buffer[i+4+c4];
+
+						let s6 = c3 + c4;
+						for (let j = 0; j < c4; j++) {
+							s6 += c5[j];
+						};
+						s6 %= 0x100;
+						if (s6 != c6) {
+							// console.log('checksum error', s6, c6, Array.from(c5).map(v => v.toString(16)).join(" "));
+							buffer = buffer.subarray(i+1);
+							i = -1; // restart loop
+							continue;
+						}
+						// console.log('readData', c1, c2, c3, c4, Array.from(c5).map(v => v.toString(16)).join(" "), c6, '==', s6);
+						this.parseData(c1, c2, c3, c4, c5);
+						buffer = buffer.subarray(i+5+c4);
+						i = -1; // restart loop
+					}
+				}
+				// console.log('parseData', Array.from(buffer).map(v => v.toString(16)).join(" "));
+				// this.parseData(value);
 			}
+		} catch (error) {
+			console.log(error);
+		} finally {
+			reader.releaseLock();
 		}
 	}
 
@@ -213,11 +203,11 @@ export class DPS150Client implements DeviceClient {
 
 	async sendCommandRaw(command: Uint8Array): Promise<void> {
 		// console.log('sendCommand', Array.from(command).map(v => v.toString(16)).join(" "));
-		if (!this.port.writable) {
+		if (!this.writable) {
 			console.error("Port is not writable");
 			return;
 		}
-		const writer = this.port.writable.getWriter();
+		const writer = this.writable.getWriter();
 		try {
 			await writer.write(command);
 			await sleep(50);

@@ -92,8 +92,23 @@ export const useDeviceStore = defineStore('device', {
       if (!p) return;
       this.port = p;
 
+      await p.open({
+        baudRate: 115200,
+        bufferSize: 1024,
+        dataBits: 8,
+        stopBits: 1,
+        flowControl: 'hardware',
+        parity: 'none'
+      });
+
+      if (!p.readable || !p.writable) {
+        console.error('Port does not have readable or writable streams');
+        return;
+      }
+
       await backend.connect(
-        p,
+        p.readable,
+        p.writable,
         Comlink.proxy((data: any) => {
           Object.assign(this.device, data);
           this.history.unshift({
@@ -105,6 +120,7 @@ export const useDeviceStore = defineStore('device', {
           this.history.splice(10000);
         })
       );
+      Comlink.transfer(backend, [p.readable, p.writable]);
       const deviceInfo = await backend.getDeviceInfo();
       Object.assign(this.device, deviceInfo);
     },

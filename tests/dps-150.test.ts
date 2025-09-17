@@ -29,7 +29,7 @@ describe('DPS150', () => {
   beforeEach(() => {
     mockPort = new MockSerialPort();
     callback = vi.fn();
-    dps = new DPS150Client(mockPort as any, callback);
+    dps = new DPS150Client(mockPort.readable, mockPort.writable, callback);
   });
 
   describe('sendCommand', () => {

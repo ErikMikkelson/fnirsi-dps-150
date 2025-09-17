@@ -6,8 +6,8 @@ import { TestDPS150Client } from './clients/test-dps-150-client';
 let dps: DPS150Client | TestDPS150Client | null = null;
 
 const exposed = {
-  async connect(port: SerialPort, onUpdate: (data: any) => void) {
-    dps = new DPS150Client(port, onUpdate);
+  async connect(readable: ReadableStream<Uint8Array>, writable: WritableStream<Uint8Array>, onUpdate: (data: any) => void) {
+    dps = new DPS150Client(readable, writable, onUpdate);
     await dps.start();
     return true;
   },
