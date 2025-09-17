@@ -57,6 +57,28 @@ export const useDeviceStore = defineStore('device', {
   }),
 
   actions: {
+    async autoConnect() {
+      // Try to auto-connect with test client if enabled
+      const onUpdateCallback = Comlink.proxy((data: any) => {
+        Object.assign(this.device, data);
+        this.history.unshift({
+          time: new Date(),
+          v: data.outputVoltage || 0,
+          i: data.outputCurrent || 0,
+          p: data.outputPower || 0,
+        });
+        if (this.history.length > 10000) {
+          this.history.splice(10000);
+        }
+      });
+
+      await backend.autoConnect(onUpdateCallback);
+      this.port = {} as SerialPort; // Mock port reference
+      const deviceInfo = await backend.getDeviceInfo();
+      Object.assign(this.device, deviceInfo);
+      return true;
+    },
+
     async start(p: SerialPort) {
       if (!p) return;
       this.port = p;

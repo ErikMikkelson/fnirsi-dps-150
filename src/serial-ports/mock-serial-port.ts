@@ -1,5 +1,9 @@
 // Mock serial port that simulates DPS-150 protocol responses
-import { HEADER_INPUT, CMD_GET, ALL } from '../clients/constants';
+import {
+  ALL,
+  CMD_GET,
+  HEADER_INPUT,
+} from '../clients/constants';
 
 export class MockDPS150SerialPort extends EventTarget implements SerialPort {
   onconnect: ((this: SerialPort, ev: Event) => any) | null = null;
@@ -9,11 +13,24 @@ export class MockDPS150SerialPort extends EventTarget implements SerialPort {
   private mockData = {
     setVoltage: 5.0,
     setCurrent: 1.0,
-    outputEnabled: false,
+    outputEnabled: true,  // Enable output by default in test mode
     outputVoltage: 0.0,
     outputCurrent: 0.0,
     inputVoltage: 20.0,
-    temperature: 25.0,
+    temperature: 30.0,
+    // Memory group presets (like original test client)
+    group1setVoltage: 1.0,
+    group1setCurrent: 0.1,
+    group2setVoltage: 2.0,
+    group2setCurrent: 0.2,
+    group3setVoltage: 3.0,
+    group3setCurrent: 0.3,
+    group4setVoltage: 4.0,
+    group4setCurrent: 0.4,
+    group5setVoltage: 5.0,
+    group5setCurrent: 0.5,
+    group6setVoltage: 6.0,
+    group6setCurrent: 0.6,
   };
 
   private controller: ReadableStreamDefaultController<Uint8Array> | null = null;
@@ -67,22 +84,27 @@ export class MockDPS150SerialPort extends EventTarget implements SerialPort {
 
   private sendMockData() {
     if (!this.controller) {
-      console.log('MockDPS150SerialPort: No controller available');
       return;
     }
 
-    console.log('MockDPS150SerialPort: Sending mock data...');
-
     // Simulate realistic behavior
     if (this.mockData.outputEnabled) {
-      // Gradually approach set voltage
-      const diff = this.mockData.setVoltage - this.mockData.outputVoltage;
-      this.mockData.outputVoltage += diff * 0.1 + (Math.random() - 0.5) * 0.01;
+      // Gradually approach set voltage with some noise
+      const voltageDiff = this.mockData.setVoltage - this.mockData.outputVoltage;
+      this.mockData.outputVoltage += voltageDiff * 0.1 + (Math.random() - 0.5) * 0.01;
+      
+      // Simulate current with realistic variation (around 0.5A as in original test)
       this.mockData.outputCurrent = 0.5 + (Math.random() - 0.5) * 0.1;
     } else {
       this.mockData.outputVoltage = 0;
       this.mockData.outputCurrent = 0;
     }
+
+    // Input voltage variations (USB-PD ~20V with small variations)
+    this.mockData.inputVoltage = 20.0 + (Math.random() - 0.5) * 0.2;
+    
+    // Temperature variations (30°C ± 2°C, rounded to 1 decimal)
+    this.mockData.temperature = Math.round((30 + (Math.random() - 0.5) * 4) * 10) / 10;
 
     // Send ALL_DATA response (this is a simplified version)
     const response = new Uint8Array(144); // Total packet size
@@ -101,6 +123,20 @@ export class MockDPS150SerialPort extends EventTarget implements SerialPort {
     view.setFloat32(20, this.mockData.outputVoltage * this.mockData.outputCurrent, true); // Power
     view.setFloat32(24, this.mockData.temperature, true);   // Temperature
 
+    // Memory group values (at correct offsets as per DPS150Client parsing)
+    view.setFloat32(28, this.mockData.group1setVoltage, true); // Group 1 voltage
+    view.setFloat32(32, this.mockData.group1setCurrent, true); // Group 1 current
+    view.setFloat32(36, this.mockData.group2setVoltage, true); // Group 2 voltage
+    view.setFloat32(40, this.mockData.group2setCurrent, true); // Group 2 current
+    view.setFloat32(44, this.mockData.group3setVoltage, true); // Group 3 voltage
+    view.setFloat32(48, this.mockData.group3setCurrent, true); // Group 3 current
+    view.setFloat32(52, this.mockData.group4setVoltage, true); // Group 4 voltage
+    view.setFloat32(56, this.mockData.group4setCurrent, true); // Group 4 current
+    view.setFloat32(60, this.mockData.group5setVoltage, true); // Group 5 voltage
+    view.setFloat32(64, this.mockData.group5setCurrent, true); // Group 5 current
+    view.setFloat32(68, this.mockData.group6setVoltage, true); // Group 6 voltage
+    view.setFloat32(72, this.mockData.group6setCurrent, true); // Group 6 current
+
     // Add some default values for other fields...
     view.setUint8(107, this.mockData.outputEnabled ? 1 : 0); // Output enabled
     view.setUint8(108, 0); // Protection state
@@ -112,17 +148,15 @@ export class MockDPS150SerialPort extends EventTarget implements SerialPort {
       checksum += response[i];
     }
     response[response.length - 1] = checksum & 0xFF;
-    
-    console.log('MockDPS150SerialPort: Enqueueing response:', Array.from(response.slice(0, 10)).map(b => b.toString(16)).join(' '));
+
     this.controller.enqueue(response);
   }
 
   async open(options: SerialOptions): Promise<void> {
-    console.log('MockDPS150SerialPort opened with options:', options);
+    // Mock implementation - no actual serial port to open
   }
 
   async close(): Promise<void> {
-    console.log('MockDPS150SerialPort closed');
     if (this.updateInterval) {
       clearInterval(this.updateInterval);
       this.updateInterval = null;

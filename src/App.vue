@@ -31,6 +31,7 @@ const {
   port,
   device,
   history,
+  autoConnect,
   connect,
   disconnect,
   enable,
@@ -170,12 +171,17 @@ watch(() => port, (newPort) => {
 }, { immediate: true });
 watch(graphOptions, updateGraph, { deep: true });
 
-onMounted(() => {
+onMounted(async () => {
   programExamples.forEach((example) => {
     example.code = example.code.trim().replace(/\t+/g, '');
   });
   program.value = programExamples[0].code;
   updateGraph();
+  
+  // Auto-connect in test mode
+  if (import.meta.env.VITE_USE_TEST_CLIENT === 'true') {
+    await autoConnect()
+  }
 });
 
 async function onNumberInput(value: number) {

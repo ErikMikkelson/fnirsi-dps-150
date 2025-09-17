@@ -6,13 +6,15 @@ import { MockDPS150SerialPort } from './serial-ports/mock-serial-port';
 let dps: DPS150Client | null = null;
 
 const exposed = {
-  async connect(port: SerialPort, onUpdate: (data: any) => void) {
-    // Check if we should use test client based on environment variable
-    const targetPort = import.meta.env.VITE_USE_TEST_CLIENT === 'true'
-      ? new MockDPS150SerialPort()
-      : port;
+  async autoConnect(onUpdate: (data: any) => void) {
+    const mockPort = new MockDPS150SerialPort()
+    dps = new DPS150Client(mockPort, onUpdate)
+    await dps.start()
+    console.log('Auto-connected to mock DPS-150')
+  },
 
-    dps = new DPS150Client(targetPort, onUpdate);
+  async connect(port: SerialPort, onUpdate: (data: any) => void) {
+    dps = new DPS150Client(port, onUpdate);
     await dps.start();
     return true;
   },
