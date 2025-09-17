@@ -76,13 +76,13 @@ export class TestDPS150Client implements DeviceClient {
         const targetVoltage = setVoltage;
         const currentVoltage = this.systemInfo.voltage;
         const voltageDiff = targetVoltage - currentVoltage;
-        
+
         // Gradually approach target voltage with some noise
         this.systemInfo.voltage = currentVoltage + voltageDiff * 0.1 + (Math.random() - 0.5) * 0.01;
-        
+
         // Simulate current with some realistic variation (around 0.5A as requested)
         this.systemInfo.current = 0.5 + (Math.random() - 0.5) * 0.1; // 0.45-0.55A range
-        
+
         // Power = Voltage × Current
         this.systemInfo.power = this.systemInfo.voltage * this.systemInfo.current;
       } else {
