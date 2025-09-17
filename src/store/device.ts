@@ -1,15 +1,8 @@
 import * as Comlink from 'comlink';
-import { defineStore } from 'pinia';
 import { wrap } from 'comlink';
-import type { WorkerAPI } from '../worker';
+import { defineStore } from 'pinia';
 
-import {
-  VOLTAGE_SET,
-  CURRENT_SET,
-  OVP,
-  OCP,
-  BRIGHTNESS,
-} from '../clients/constants';
+import type { WorkerAPI } from '../worker';
 
 const worker = new Worker(new URL('../worker.ts', import.meta.url), {
   type: 'module',
