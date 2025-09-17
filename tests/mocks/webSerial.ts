@@ -227,15 +227,13 @@ export class MockSerialPort extends EventTarget implements SerialPort {
           stub.used = true;
         }
 
-        // Use queueMicrotask to avoid issues with fake timers
-        queueMicrotask(() => {
-          if (this.isOpen) {
-            const response = typeof stub.response === 'function'
-              ? stub.response()
-              : stub.response;
-            this.pushReadData(response);
-          }
-        });
+        // Respond immediately and synchronously
+        if (this.isOpen) {
+          const response = typeof stub.response === 'function'
+            ? stub.response()
+            : stub.response;
+          this.pushReadData(response);
+        }
 
         return; // Stop after first match
       }
@@ -283,7 +281,10 @@ export class MockSerialPort extends EventTarget implements SerialPort {
     return packet;
   }
 
-  private createAllResponse(): Uint8Array {
+  /**
+   * Public helper to create ALL response for tests
+   */
+  createAllResponse(): Uint8Array {
     // Create a minimal ALL response with 139 bytes of data
     const dataSize = 139;
     const packet = new Uint8Array(5 + dataSize);

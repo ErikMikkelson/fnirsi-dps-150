@@ -27,10 +27,8 @@ describe('DPS150', () => {
   let dps: DPS150Client;
 
   beforeEach(() => {
-    vi.useFakeTimers();
-    vi.clearAllTimers();
     mockPort = new MockSerialPort();
-    // Set up default responses for initialization commands
+    // Set up default initialization responses
     mockPort.setupDefaultResponses();
     callback = vi.fn();
     // DPS150Client is now created with the port, and started in tests that need an active connection
@@ -41,23 +39,15 @@ describe('DPS150', () => {
     // Ensure the client is stopped and the port is closed after each test
     await dps.stop();
     vi.clearAllMocks();
-    vi.clearAllTimers();
-    vi.useRealTimers();
   });
 
   describe('sendCommand', () => {
     beforeEach(async () => {
-      const startPromise = dps.start();
-      // Advance timers to allow initialization commands to complete
-      await vi.advanceTimersByTimeAsync(100);
-      await startPromise;
+      await dps.start();
     });
 
     it('数値データでコマンドを正しく送信する', async () => {
-      const numericCommandPromise = dps.sendCommand(0xf1, 0xb1, 193, 5);
-      // Advance timers to resolve any sleep() calls
-      await vi.advanceTimersByTimeAsync(50);
-      await numericCommandPromise;
+      await dps.sendCommand(0xf1, 0xb1, 193, 5);
 
       const writtenData = mockPort.getWrittenData();
       expect(writtenData).toHaveLength(1);
@@ -67,10 +57,7 @@ describe('DPS150', () => {
     });
 
     it('配列データでコマンドを正しく送信する', async () => {
-      const arrayCommandPromise = dps.sendCommand(0xf1, 0xb1, 194, [1, 2, 3, 4]);
-      // Advance timers to resolve any sleep() calls
-      await vi.advanceTimersByTimeAsync(50);
-      await arrayCommandPromise;
+      await dps.sendCommand(0xf1, 0xb1, 194, [1, 2, 3, 4]);
 
       const writtenData = mockPort.getWrittenData();
       expect(writtenData).toHaveLength(1);
@@ -80,10 +67,7 @@ describe('DPS150', () => {
     });
 
     it('チェックサムが正しく計算される', async () => {
-      const checksumTestCommandPromise = dps.sendCommand(0xf1, 0xa1, 192, 0);
-      // Advance timers to resolve any sleep() calls
-      await vi.advanceTimersByTimeAsync(50);
-      await checksumTestCommandPromise;
+      await dps.sendCommand(0xf1, 0xa1, 192, 0);
 
       const writtenData = mockPort.getWrittenData();
       const packet = writtenData[0];
@@ -101,15 +85,11 @@ describe('DPS150', () => {
     });
 
     it('writeメソッドが呼ばれ、適切な待機時間がある', async () => {
-      const writeTestCommandPromise = dps.sendCommand(0xf1, 0xb1, 193, 1);
-
-      // Advance timers and check that sleep was called
-      await vi.advanceTimersByTimeAsync(50);
-      await writeTestCommandPromise;
+      await dps.sendCommand(0xf1, 0xb1, 193, 1);
 
       const writtenData = mockPort.getWrittenData();
       expect(writtenData).toHaveLength(1);
-      // With fake timers, we just verify the command was sent successfully
+      // Verify the command was sent successfully
       expect(writtenData[0]).toBeDefined();
     });
   });
@@ -124,16 +104,18 @@ describe('DPS150', () => {
         mockPort.createStringResponse(222, "CUSTOM-DPS")
       );
 
-      // Set up a custom response for voltage reading
-      mockPort.whenReceiving((cmd) => {
-        return cmd.length >= 4 && cmd[2] === 0x01 && cmd[3] === 193;
-      }).respondWith(
-        createFloatResponsePacket(193, 12.5)
+      // Set up responses for other initialization commands
+      mockPort.expectCommand(0x01, 223).respondWith(() =>
+        mockPort.createStringResponse(223, "1.0")
+      );
+      mockPort.expectCommand(0x01, 224).respondWith(() =>
+        mockPort.createStringResponse(224, "2.3")
+      );
+      mockPort.expectCommand(0x01, 255).respondWith(() =>
+        mockPort.createAllResponse()
       );
 
-      const startPromise = dps.start();
-      await vi.advanceTimersByTimeAsync(100);
-      await startPromise;
+      await dps.start();
 
       // Test that we got the custom model name during initialization
       const writtenData = mockPort.getWrittenData();
@@ -156,9 +138,18 @@ describe('DPS150', () => {
         mockPort.createStringResponse(222, "SUBSEQUENT-CALLS")
       );
 
-      const startPromise = dps.start();
-      await vi.advanceTimersByTimeAsync(100);
-      await startPromise;
+      // Set up responses for other initialization commands
+      mockPort.expectCommand(0x01, 223).respondWith(() =>
+        mockPort.createStringResponse(223, "1.0")
+      );
+      mockPort.expectCommand(0x01, 224).respondWith(() =>
+        mockPort.createStringResponse(224, "2.3")
+      );
+      mockPort.expectCommand(0x01, 255).respondWith(() =>
+        mockPort.createAllResponse()
+      );
+
+      await dps.start();
 
       // The first call should have used the one-time response
       // Subsequent calls would use the default response
@@ -183,18 +174,12 @@ describe('DPS150', () => {
 
   describe('sendCommandFloat', () => {
     beforeEach(async () => {
-      const startPromise = dps.start();
-      // Advance timers to allow initialization commands to complete
-      await vi.advanceTimersByTimeAsync(100);
-      await startPromise;
+      await dps.start();
     });
 
     it('Float値を正しくリトルエンディアンに変換して送信する', async () => {
       const testValue = 12.5;
-      const floatCommandPromise = dps.sendCommandFloat(0xf1, 0xb1, VOLTAGE_SET, testValue);
-      // Advance timers to resolve any sleep() calls
-      await vi.advanceTimersByTimeAsync(50);
-      await floatCommandPromise;
+      await dps.sendCommandFloat(0xf1, 0xb1, VOLTAGE_SET, testValue);
 
       const writtenData = mockPort.getWrittenData();
       expect(writtenData).toHaveLength(1);
@@ -205,10 +190,7 @@ describe('DPS150', () => {
 
     it('負の値を正しく処理する', async () => {
       const testValue = -5.25;
-      const negativeValueCommandPromise = dps.sendCommandFloat(0xf1, 0xb1, CURRENT_SET, testValue);
-      // Advance timers to resolve any sleep() calls
-      await vi.advanceTimersByTimeAsync(50);
-      await negativeValueCommandPromise;
+      await dps.sendCommandFloat(0xf1, 0xb1, CURRENT_SET, testValue);
 
       const writtenData = mockPort.getWrittenData();
       const packet = writtenData[0];
@@ -222,10 +204,7 @@ describe('DPS150', () => {
     });
 
     it('ゼロ値を正しく処理する', async () => {
-      const zeroValueCommandPromise = dps.sendCommandFloat(0xf1, 0xb1, VOLTAGE_SET, 0);
-      // Advance timers to resolve any sleep() calls
-      await vi.advanceTimersByTimeAsync(50);
-      await zeroValueCommandPromise;
+      await dps.sendCommandFloat(0xf1, 0xb1, VOLTAGE_SET, 0);
 
       const writtenData = mockPort.getWrittenData();
       const packet = writtenData[0];
@@ -240,19 +219,13 @@ describe('DPS150', () => {
 
   describe('sendCommandRaw', () => {
     beforeEach(async () => {
-      const startPromise = dps.start();
-      // Advance timers to allow initialization commands to complete
-      await vi.advanceTimersByTimeAsync(100);
-      await startPromise;
+      await dps.start();
     });
 
     it('生のコマンドデータを送信する', async () => {
       const rawCommand = new Uint8Array([0xf1, 0xb1, 193, 1, 5, 199]);
 
-      const promise = dps.sendCommandRaw(rawCommand);
-      // Advance timers to resolve any sleep() calls
-      await vi.advanceTimersByTimeAsync(50);
-      await promise;
+      await dps.sendCommandRaw(rawCommand);
 
       const writtenData = mockPort.getWrittenData();
       expect(writtenData).toHaveLength(1);
