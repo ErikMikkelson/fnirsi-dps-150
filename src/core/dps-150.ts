@@ -44,6 +44,30 @@ const HARDWARE_VERSION = 223;
 const FIRMWARE_VERSION = 224;
 const ALL = 255;
 
+export const DPS150Commands = {
+  VOLTAGE_SET,
+  CURRENT_SET,
+  GROUP1_VOLTAGE_SET,
+  GROUP1_CURRENT_SET,
+  GROUP2_VOLTAGE_SET,
+  GROUP2_CURRENT_SET,
+  GROUP3_VOLTAGE_SET,
+  GROUP3_CURRENT_SET,
+  GROUP4_VOLTAGE_SET,
+  GROUP4_CURRENT_SET,
+  GROUP5_VOLTAGE_SET,
+  GROUP5_CURRENT_SET,
+  GROUP6_VOLTAGE_SET,
+  GROUP6_CURRENT_SET,
+  OVP,
+  OCP,
+  OPP,
+  OTP,
+  LVP,
+  BRIGHTNESS,
+  VOLUME,
+};
+
 const PROTECTION_STATES = [
 	"",
 	"OVP",
@@ -53,6 +77,51 @@ const PROTECTION_STATES = [
 	"LVP",
 	"REP",
 ];
+
+export interface SystemInfo {
+  outputClosed: boolean;
+  cv_cc: 'CV' | 'CC';
+  protectionState: string;
+  voltage: number;
+  current: number;
+  power: number;
+  inputVoltage: number;
+  temperature: number;
+}
+
+export interface DeviceInfo {
+  model: string;
+  serialNumber: string;
+  firmwareVersion: string;
+  upperLimitVoltage: number;
+  upperLimitCurrent: number;
+  setVoltage: number;
+  setCurrent: number;
+  group1setVoltage: number;
+  group1setCurrent: number;
+  group2setVoltage: number;
+  group2setCurrent: number;
+  group3setVoltage: number;
+  group3setCurrent: number;
+  group4setVoltage: number;
+  group4setCurrent: number;
+  group5setVoltage: number;
+  group5setCurrent: number;
+  group6setVoltage: number;
+  group6setCurrent: number;
+  overVoltageProtection: number;
+  overCurrentProtection: number;
+  overPowerProtection: number;
+  overTemperatureProtection: number;
+  lowVoltageProtection: number;
+  brightness: number;
+  volume: number;
+}
+
+export interface GroupValue {
+  setVoltage: number;
+  setCurrent: number;
+}
 
 interface DeviceData {
   inputVoltage?: number;

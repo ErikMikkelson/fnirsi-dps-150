@@ -1,124 +1,83 @@
 import * as Comlink from 'comlink';
 
-import { sleep } from '../utils';
-import {
-  CURRENT_SET,
-  DPS150,
-  VOLTAGE_SET,
-} from './dps-150';
+import { DPS150 } from './dps-150';
+import { TestDPS150 } from './dps-150.test-client';
 
-export class Backend {
-  port: SerialPort | null = null;
-  dps: DPS150 | null = null;
-  callback: ((data: any) => void) | null = null;
-  executeCommandsAbortController: AbortController | null = null;
+let dps: DPS150 | TestDPS150 | null = null;
 
-  constructor() {}
-
-  async init() {}
-
-  async startSerialPort(opts: { usbVendorId?: number; usbProductId?: number }, cb: (data: any) => void) {
-    console.log('worker startSerialPort', opts, cb);
-    const ports = await navigator.serial.getPorts();
-    this.port =
-      ports.find((port) => {
-        const portInfo = port.getInfo();
-        return portInfo.usbVendorId === opts.usbVendorId && portInfo.usbProductId === opts.usbProductId;
-      }) || null;
-    if (!this.port) throw 'port not found';
-    this.callback = cb;
-    this.dps = new DPS150(this.port, this.callback);
-    try {
-      await this.dps.start();
-    } catch (e) {
-      this.port = null;
-      throw e;
+const exposed = {
+  async connect(port: SerialPort, onUpdate: (data: any) => void) {
+    dps = new DPS150(port, onUpdate);
+    await dps.start();
+    return true;
+  },
+  async connectTest(onUpdate: (data: any) => void) {
+    dps = new TestDPS150();
+    await dps.init(onUpdate);
+    return true;
+  },
+  async disconnect() {
+    if (dps) {
+      // @ts-ignore
+      await dps.close();
+      dps = null;
     }
-    navigator.serial.addEventListener('disconnect', (event) => {
-      console.log('disconnected', event.target);
-      if (event.target === this.port) {
-        this.callback?.(null);
-        this.port = null;
-      }
-    });
-  }
-
-  async stopSerialPort() {
-    console.log('worker stopSerialPort');
-    if (this.dps && this.port) {
-      await this.dps.stop();
-      await this.port.forget();
-      this.port = null;
-      this.dps = null;
-      this.callback?.(null);
-    }
-  }
-
+  },
+  async getDeviceInfo() {
+    return dps?.getDeviceInfo();
+  },
+  async getSystemInfo() {
+    return dps?.getSystemInfo();
+  },
+  async getGroupValue(group: number) {
+    return dps?.getGroupValue(group);
+  },
+  async setFloatValue(command: number, value: number) {
+    await dps?.setFloatValue(command, value);
+  },
+  async setByteValue(command: number, value: number) {
+    await dps?.setByteValue(command, value);
+  },
   async enable() {
-    await this.dps?.enable();
-  }
-
+    await dps?.enable();
+  },
   async disable() {
-    await this.dps?.disable();
-  }
-
+    await dps?.disable();
+  },
   async startMetering() {
-    await this.dps?.startMetering();
-  }
-
+    // await dps?.startMetering();
+  },
   async stopMetering() {
-    await this.dps?.stopMetering();
-  }
-
-  async setFloatValue(id: number, value: number) {
-    await this.dps?.setFloatValue(id, value);
-  }
-
-  async setByteValue(id: number, value: number) {
-    await this.dps?.setByteValue(id, value);
-  }
-
-  async getAll() {
-    await this.dps?.getAll();
-  }
-
-  async executeCommands(queue: any[], progress: (n: number) => void) {
-    this.executeCommandsAbortController = new AbortController();
-    const signal = this.executeCommandsAbortController.signal;
-    console.log('executeCommands', queue);
-    while (queue.length > 0) {
-      progress(queue.length);
-      const cmd = queue.shift();
-      if (cmd.type === 'V') {
-        await this.dps?.setFloatValue(VOLTAGE_SET, cmd.args[0]);
-      } else if (cmd.type === 'I') {
-        await this.dps?.setFloatValue(CURRENT_SET, cmd.args[0]);
-      } else if (cmd.type === 'ON') {
-        await this.dps?.enable();
-      } else if (cmd.type === 'OFF') {
-        await this.dps?.disable();
-      } else if (cmd.type === 'SLEEP') {
-        await sleep(cmd.args[0]);
-      }
-      if (signal.aborted) {
-        console.log('aborted');
-        this.dps?.disable();
-        break;
+    // await dps?.stopMetering();
+  },
+  async executeCommands(commands: any[], onProgress: (n: number) => void) {
+    if (!dps) return;
+    let i = 0;
+    for (const command of commands) {
+      onProgress(commands.length - i);
+      i++;
+      switch (command.type) {
+        case 'V':
+          await dps.setFloatValue(193, command.args[0]);
+          break;
+        case 'I':
+          await dps.setFloatValue(194, command.args[0]);
+          break;
+        case 'ON':
+          await dps.enable();
+          break;
+        case 'OFF':
+          await dps.disable();
+          break;
+        case 'SLEEP':
+          await new Promise((resolve) => setTimeout(resolve, command.args[0]));
+          break;
       }
     }
-    await sleep(500);
-    await this.dps?.getAll();
-    this.executeCommandsAbortController = null;
-  }
+    onProgress(0);
+  },
+};
 
-  async abortExecuteCommands() {
-    if (this.executeCommandsAbortController) {
-      this.executeCommandsAbortController.abort();
-      this.executeCommandsAbortController = null;
-    }
-  }
-}
-
-Comlink.expose(Backend);
+Comlink.expose(exposed);
 
 

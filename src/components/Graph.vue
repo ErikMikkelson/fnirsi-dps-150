@@ -12,6 +12,10 @@ const props = defineProps({
     type: Object,
     required: true,
   },
+  connected: {
+    type: Boolean,
+    required: true,
+  },
 });
 
 const graph = ref<HTMLDivElement | null>(null);
@@ -80,7 +84,7 @@ function updateGraph() {
   }
 
   const layout = {
-    title: { text: '' },
+    title: { text: props.connected ? '' : 'Device is not connected', y: 0.5, x: 0.5 },
     showlegend: false,
     margin: {
       t: 0,
