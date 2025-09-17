@@ -50,9 +50,6 @@ export class MockSerialPort extends EventTarget implements SerialPort {
         // Real hardware may reject writes to closed ports, but for testing we capture all attempts
         const data = new Uint8Array(chunk);
         this.writtenData.push(data);
-
-        // Auto-respond to GET commands during initialization
-        this.handleAutoResponse(data);
       },
       close: async () => {
         // console.log('Writer closed');
@@ -118,22 +115,7 @@ export class MockSerialPort extends EventTarget implements SerialPort {
     return this.whenReceiving(matcher);
   }
 
-  /**
-   * Set up default responses for common initialization commands
-   */
-  setupDefaultResponses(): void {
-    // MODEL_NAME (222)
-    this.expectCommand(0x01, 222).respondWith(() => this.createStringResponseInternal(222, "DPS-150"));
 
-    // HARDWARE_VERSION (223)
-    this.expectCommand(0x01, 223).respondWith(() => this.createStringResponseInternal(223, "1.0"));
-
-    // FIRMWARE_VERSION (224)
-    this.expectCommand(0x01, 224).respondWith(() => this.createStringResponseInternal(224, "2.3"));
-
-    // ALL data (255)
-    this.expectCommand(0x01, 255).respondWith(() => this.createAllResponse());
-  }
 
   /**
    * Clear all response stubs
@@ -211,34 +193,6 @@ export class MockSerialPort extends EventTarget implements SerialPort {
     return this._writable;
   }
 
-  // Auto-respond to initialization commands
-  private handleAutoResponse(commandData: Uint8Array) {
-    // Find a matching stub for this command
-    for (let i = 0; i < this.responseStubs.length; i++) {
-      const stub = this.responseStubs[i];
-
-      // Skip if this is a once-only stub that's already been used
-      if (stub.once && stub.used) continue;
-
-      // Check if this stub matches the command
-      if (stub.matcher(commandData)) {
-        // Mark as used if it's a once-only stub
-        if (stub.once) {
-          stub.used = true;
-        }
-
-        // Respond immediately and synchronously
-        if (this.isOpen) {
-          const response = typeof stub.response === 'function'
-            ? stub.response()
-            : stub.response;
-          this.pushReadData(response);
-        }
-
-        return; // Stop after first match
-      }
-    }
-  }
 
   /**
    * Public helper to create string responses for tests
@@ -262,24 +216,7 @@ export class MockSerialPort extends EventTarget implements SerialPort {
     return packet;
   }
 
-  private createStringResponseInternal(type: number, value: string): Uint8Array {
-    const data = new TextEncoder().encode(value);
-    const packet = new Uint8Array(5 + data.length);
-    packet[0] = 0xf0; // HEADER_INPUT
-    packet[1] = 0xa1; // CMD_GET
-    packet[2] = type;
-    packet[3] = data.length;
-    packet.set(data, 4);
 
-    // Calculate checksum
-    let checksum = type + data.length;
-    for (let i = 0; i < data.length; i++) {
-      checksum += data[i];
-    }
-    packet[4 + data.length] = checksum % 256;
-
-    return packet;
-  }
 
   /**
    * Public helper to create ALL response for tests

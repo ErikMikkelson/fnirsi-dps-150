@@ -28,8 +28,21 @@ describe('DPS150', () => {
 
   beforeEach(() => {
     mockPort = new MockSerialPort();
-    // Set up default initialization responses
-    mockPort.setupDefaultResponses();
+
+    // Set up default initialization responses that DPS150Client needs
+    mockPort.expectCommand(0x01, 222).respondWith(() =>
+      mockPort.createStringResponse(222, "DPS-150")
+    );
+    mockPort.expectCommand(0x01, 223).respondWith(() =>
+      mockPort.createStringResponse(223, "1.0")
+    );
+    mockPort.expectCommand(0x01, 224).respondWith(() =>
+      mockPort.createStringResponse(224, "2.3")
+    );
+    mockPort.expectCommand(0x01, 255).respondWith(() =>
+      mockPort.createAllResponse()
+    );
+
     callback = vi.fn();
     // DPS150Client is now created with the port, and started in tests that need an active connection
     dps = new DPS150Client(mockPort, callback);
@@ -489,11 +502,7 @@ describe('DPS150', () => {
     it('start()がポートを正しく開く', async () => {
       expect(mockPort.isOpen).toBe(false);
 
-      // startを非同期で実行（startReaderが待機状態になるため）
-      const startPromise = dps.start();
-
-      // 少し待ってからポートの状態を確認
-      await vi.advanceTimersByTimeAsync(50);
+      await dps.start();
 
       expect(mockPort.isOpen).toBe(true);
       expect(mockPort.openOptions).toEqual({
@@ -555,15 +564,12 @@ describe('DPS150', () => {
       // startReaderを非同期で開始
       dps.startReader();
 
-      // 少し待ってからパケットを送信
-      await vi.advanceTimersByTimeAsync(10);
-
       // 入力電圧パケットを送信
       const voltagePacket = createFloatResponsePacket(192, 12.5);
       mockPort.pushReadData(voltagePacket);
 
-      // コールバックが呼ばれるまで少し待つ
-      await vi.advanceTimersByTimeAsync(10);
+      // Wait for the callback to be called (async processing)
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       expect(callback).toHaveBeenCalledWith({
         inputVoltage: 12.5
@@ -572,17 +578,13 @@ describe('DPS150', () => {
 
     it('複数のパケットを連続して処理する', async () => {
       dps.startReader();
-      await vi.advanceTimersByTimeAsync(10);
-
       // 複数のパケットを連続送信
       const voltagePacket = createFloatResponsePacket(192, 15.0);
       const temperaturePacket = createFloatResponsePacket(196, 25.5);
 
       mockPort.pushReadData(voltagePacket);
-      await vi.advanceTimersByTimeAsync(10);
 
       mockPort.pushReadData(temperaturePacket);
-      await vi.advanceTimersByTimeAsync(10);
 
       expect(callback).toHaveBeenCalledTimes(2);
       expect(callback).toHaveBeenNthCalledWith(1, { inputVoltage: 15.0 });
@@ -591,7 +593,6 @@ describe('DPS150', () => {
 
     it('不正なチェックサムのパケットを適切にスキップする', async () => {
       dps.startReader();
-      await vi.advanceTimersByTimeAsync(10);
 
       // 不正なチェックサムのパケットを作成
       const invalidPacket = createFloatResponsePacket(192, 12.5);
@@ -604,7 +605,6 @@ describe('DPS150', () => {
       combinedData.set(validPacket, invalidPacket.length);
 
       mockPort.pushReadData(combinedData);
-      await vi.advanceTimersByTimeAsync(30);
 
       // 修正後：不正なパケットはスキップされ、有効なパケットのみ処理される
       expect(callback).toHaveBeenCalledTimes(1);
@@ -613,14 +613,12 @@ describe('DPS150', () => {
 
     it('単独の不正なチェックサムパケットが処理される', async () => {
       dps.startReader();
-      await vi.advanceTimersByTimeAsync(10);
 
       // 不正なチェックサムのパケットのみ送信
       const invalidPacket = createFloatResponsePacket(192, 12.5);
       invalidPacket[invalidPacket.length - 1] = 0xFF; // 不正なチェックサム
 
       mockPort.pushReadData(invalidPacket);
-      await vi.advanceTimersByTimeAsync(20);
 
       // 不正なパケットなのでコールバックは呼ばれない（正しい動作）
       expect(callback).not.toHaveBeenCalled();
@@ -628,7 +626,6 @@ describe('DPS150', () => {
       // その後、有効なパケットを送信すれば正常に処理される
       const validPacket = createFloatResponsePacket(196, 25.0);
       mockPort.pushReadData(validPacket);
-      await vi.advanceTimersByTimeAsync(20);
 
       expect(callback).toHaveBeenCalledTimes(1);
       expect(callback).toHaveBeenCalledWith({ temperature: 25.0 });
@@ -637,19 +634,13 @@ describe('DPS150', () => {
 
   describe('ユーティリティメソッド', () => {
     beforeEach(async () => {
-      const startPromise = dps.start();
-      // Advance timers to allow initialization commands to complete
-      await vi.advanceTimersByTimeAsync(100);
-      await startPromise;
+      await dps.start();
     });
 
     it('setFloatValue()がFloat値コマンドを送信する', async () => {
       const testValue = 5.5;
 
-      const setFloatValuePromise = dps.setFloatValue(VOLTAGE_SET, testValue);
-      // Advance timers to resolve any sleep() calls
-      await vi.advanceTimersByTimeAsync(50);
-      await setFloatValuePromise;
+      await dps.setFloatValue(VOLTAGE_SET, testValue);
 
       const writtenData = mockPort.getWrittenData();
       expect(writtenData).toHaveLength(1);
@@ -661,10 +652,8 @@ describe('DPS150', () => {
     it('setByteValue()がバイト値コマンドを送信する', async () => {
       const testValue = 128;
 
-      const setByteValuePromise = dps.setByteValue(214, testValue); // BRIGHTNESS
-      // Advance timers to resolve any sleep() calls
-      await vi.advanceTimersByTimeAsync(50);
-      await setByteValuePromise;
+      await dps.setByteValue(214, testValue); // BRIGHTNESS
+      await dps.setByteValue(214, testValue); // BRIGHTNESS
 
       const writtenData = mockPort.getWrittenData();
       expect(writtenData).toHaveLength(1);
@@ -674,10 +663,7 @@ describe('DPS150', () => {
     });
 
     it('enable()が出力オンコマンドを送信する', async () => {
-      const enableOutputPromise = dps.enable();
-      // Advance timers to resolve any sleep() calls
-      await vi.advanceTimersByTimeAsync(50);
-      await enableOutputPromise;
+      await dps.enable();
 
       const writtenData = mockPort.getWrittenData();
       expect(writtenData).toHaveLength(1);
@@ -687,10 +673,7 @@ describe('DPS150', () => {
     });
 
     it('disable()が出力オフコマンドを送信する', async () => {
-      const disableOutputPromise = dps.disable();
-      // Advance timers to resolve any sleep() calls
-      await vi.advanceTimersByTimeAsync(50);
-      await disableOutputPromise;
+      await dps.disable();
 
       const writtenData = mockPort.getWrittenData();
       expect(writtenData).toHaveLength(1);
@@ -700,10 +683,7 @@ describe('DPS150', () => {
     });
 
     it('startMetering()がメタリング開始コマンドを送信する', async () => {
-      const startMeteringPromise = dps.startMetering();
-      // Advance timers to resolve any sleep() calls
-      await vi.advanceTimersByTimeAsync(50);
-      await startMeteringPromise;
+      await dps.startMetering();
 
       const writtenData = mockPort.getWrittenData();
       expect(writtenData).toHaveLength(1);
@@ -713,10 +693,7 @@ describe('DPS150', () => {
     });
 
     it('stopMetering()がメタリング停止コマンドを送信する', async () => {
-      const stopMeteringPromise = dps.stopMetering();
-      // Advance timers to resolve any sleep() calls
-      await vi.advanceTimersByTimeAsync(50);
-      await stopMeteringPromise;
+      await dps.stopMetering();
 
       const writtenData = mockPort.getWrittenData();
       expect(writtenData).toHaveLength(1);
@@ -728,12 +705,8 @@ describe('DPS150', () => {
     it('getAll()が全データ取得コマンドを送信する', async () => {
       // The reader needs to be running to process the response
       dps.startReader();
-      // Advance a small amount of time to let the reader start
-      await vi.advanceTimersByTimeAsync(10);
 
       const getAllPromise = dps.getAll();
-      // Advance timers to resolve any sleep() calls in sendCommand
-      await vi.advanceTimersByTimeAsync(50);
 
       // Simulate a response from the device to resolve the promise
       const responseData = new Uint8Array(139); // ALL response has 139 bytes of data
@@ -755,21 +728,12 @@ describe('DPS150', () => {
     it('start()時に適切なログが出力される', async () => {
       const consoleSpy = vi.spyOn(console, 'log');
 
-      // start()を非同期で実行（startReaderが待機状態になる）
-      const startPromise = dps.start();
-
-      // 少し待ってからログを確認
-      await vi.advanceTimersByTimeAsync(10);
+      await dps.start();
 
       expect(consoleSpy).toHaveBeenCalledWith('start', mockPort);
       expect(consoleSpy).toHaveBeenCalledWith('reading...');
 
       consoleSpy.mockRestore();
-
-      // クリーンアップ
-      if ((dps as any).reader) {
-        await (dps as any).reader.cancel();
-      }
     });
 
     it('stop()時に適切なログが出力される', async () => {
