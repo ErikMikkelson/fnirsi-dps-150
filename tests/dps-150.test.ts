@@ -614,7 +614,19 @@ describe('DPS150', () => {
     });
 
     it('getAll()が全データ取得コマンドを送信する', async () => {
-      await dps.getAll();
+      // The reader needs to be running to process the response
+      dps.startReader();
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      const getAllPromise = dps.getAll();
+
+      // Simulate a response from the device to resolve the promise
+      const responseData = new Uint8Array(139); // ALL response has 139 bytes of data
+      const responsePacket = createCommandPacket(0xf0, 0xa1, 255, responseData);
+      mockPort.pushReadData(responsePacket);
+
+      // Wait for the getAll promise to resolve
+      await expect(getAllPromise).resolves.toBeDefined();
 
       const writtenData = mockPort.getWrittenData();
       expect(writtenData).toHaveLength(1);
