@@ -12,7 +12,7 @@ export class TestDPS150Client implements DeviceClient {
   private time = 0;
 
   private systemInfo: SystemInfo = {
-    outputEnabled: false,
+    outputEnabled: true, // Enable output by default in test mode
     cv_cc: 'CV',
     protectionState: '',
     voltage: 0,
@@ -68,16 +68,23 @@ export class TestDPS150Client implements DeviceClient {
     this.intervalId = setInterval(() => {
       this.time += 0.1;
       if (this.systemInfo.outputEnabled) {
-        // Simulate a sine wave for voltage and a noisy signal for current
+        // Simulate realistic power supply behavior
         const setVoltage = this.deviceInfo.setVoltage;
         const setCurrent = this.deviceInfo.setCurrent;
 
-        this.systemInfo.voltage =
-          setVoltage / 2 + (Math.sin(this.time) * setVoltage) / 2;
-        this.systemInfo.current =
-          setCurrent / 2 + (Math.cos(this.time * 2) * setCurrent) / 2;
-        this.systemInfo.power =
-          this.systemInfo.voltage * this.systemInfo.current;
+        // Simulate voltage gradually approaching setVoltage with small fluctuations
+        const targetVoltage = setVoltage;
+        const currentVoltage = this.systemInfo.voltage;
+        const voltageDiff = targetVoltage - currentVoltage;
+        
+        // Gradually approach target voltage with some noise
+        this.systemInfo.voltage = currentVoltage + voltageDiff * 0.1 + (Math.random() - 0.5) * 0.01;
+        
+        // Simulate current with some realistic variation (around 0.5A as requested)
+        this.systemInfo.current = 0.5 + (Math.random() - 0.5) * 0.1; // 0.45-0.55A range
+        
+        // Power = Voltage × Current
+        this.systemInfo.power = this.systemInfo.voltage * this.systemInfo.current;
       } else {
         this.systemInfo.voltage = 0;
         this.systemInfo.current = 0;

@@ -88,7 +88,7 @@ const programRemaining = ref(0);
 
 // Computed property to determine if device is connected (including test mode)
 const isConnected = computed(() => {
-  return !!port || import.meta.env.VITE_USE_TEST_CLIENT;
+  return !!port || !!import.meta.env.VITE_USE_TEST_CLIENT;
 });
 
 const programExamples = reactive([
