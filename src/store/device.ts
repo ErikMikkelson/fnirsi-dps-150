@@ -71,7 +71,7 @@ export const useDeviceStore = defineStore('device', {
           if (data.type === 'systemInfo') {
             Object.assign(this.device, data.data);
             this.history.unshift({
-              time: new Date(),
+              time: data.timestamp || new Date(),
               v: data.data.voltage,
               i: data.data.current,
               p: data.data.power,

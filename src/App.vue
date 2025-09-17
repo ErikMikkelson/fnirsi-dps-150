@@ -475,7 +475,7 @@ function downloadHistory() {
       <v-spacer></v-spacer>
 
       <span class="ms-2">
-        {{ device.temperature }}℃ Input: {{ formatNumber(device.inputVoltage) }}V
+        {{ formatNumber(device.temperature) }}℃ Input: {{ formatNumber(device.inputVoltage) }}V
       </span>
 
       <v-btn class="connect" icon variant="flat" color="red" @click="connect" v-if="!port">

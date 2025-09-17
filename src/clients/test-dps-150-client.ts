@@ -18,8 +18,8 @@ export class TestDPS150Client implements DeviceClient {
     voltage: 0,
     current: 0,
     power: 0,
-    inputVoltage: 12.5,
-    temperature: 30,
+    inputVoltage: 20.0, // USB-PD voltage
+    temperature: 30.0,
   };
 
   private deviceInfo: DeviceInfo = {
@@ -58,7 +58,48 @@ export class TestDPS150Client implements DeviceClient {
   }
 
   async connectTest() {
+    // Pre-populate some historical data so the graph looks full
+    this.prePopulateHistoricalData();
     this.startSendingUpdates();
+  }
+
+  private prePopulateHistoricalData() {
+    if (!this.onUpdate) return;
+    
+    const now = new Date();
+    const historicalPoints = 60; // 30 seconds of data at 500ms intervals
+    
+    for (let i = historicalPoints; i > 0; i--) {
+      const timeOffset = i * 500; // 500ms intervals
+      const historicalTime = new Date(now.getTime() - timeOffset);
+      
+      // Simulate historical voltage ramp-up
+      const progress = (historicalPoints - i) / historicalPoints;
+      const setVoltage = this.deviceInfo.setVoltage;
+      
+      // Voltage gradually approaches target with some noise
+      const voltage = setVoltage * progress * 0.9 + (Math.random() - 0.5) * 0.1;
+      const current = 0.5 + (Math.random() - 0.5) * 0.1;
+      const power = voltage * current;
+      
+      const historicalData = {
+        outputEnabled: this.systemInfo.outputEnabled,
+        cv_cc: 'CV',
+        protectionState: '',
+        voltage: Math.max(0, voltage),
+        current: Math.max(0, current),
+        power: Math.max(0, power),
+        inputVoltage: 20.0 + (Math.random() - 0.5) * 0.2, // USB-PD ~20V with small variations
+        temperature: Math.round((30 + (Math.random() - 0.5) * 4) * 10) / 10, // Round to 1 decimal place
+      };
+      
+      // Send historical data point
+      this.onUpdate({ 
+        type: 'systemInfo', 
+        data: historicalData,
+        timestamp: historicalTime // Include timestamp for proper ordering
+      });
+    }
   }
 
   private startSendingUpdates() {
@@ -91,13 +132,13 @@ export class TestDPS150Client implements DeviceClient {
         this.systemInfo.power = 0;
       }
 
-      this.systemInfo.inputVoltage = 12.5 + (Math.random() - 0.5) * 0.1;
-      this.systemInfo.temperature = 30 + (Math.random() - 0.5) * 2;
+      this.systemInfo.inputVoltage = 20.0 + (Math.random() - 0.5) * 0.2; // USB-PD ~20V with small variations
+      this.systemInfo.temperature = Math.round((30 + (Math.random() - 0.5) * 4) * 10) / 10; // Round to 1 decimal place
 
       if (this.onUpdate) {
         this.onUpdate({ type: 'systemInfo', data: this.systemInfo });
       }
-    }, 100);
+    }, 500);
   }
 
   async getFloatValue(command: number): Promise<number> {
