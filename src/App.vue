@@ -177,7 +177,7 @@ onMounted(async () => {
   });
   program.value = programExamples[0].code;
   updateGraph();
-  
+
   // Auto-connect in test mode
   if (import.meta.env.VITE_USE_TEST_CLIENT === 'true') {
     await autoConnect()

@@ -14,8 +14,8 @@ export class MockDPS150SerialPort extends EventTarget implements SerialPort {
     setVoltage: 5.0,
     setCurrent: 1.0,
     outputEnabled: true,  // Enable output by default in test mode
-    outputVoltage: 0.0,
-    outputCurrent: 0.0,
+    outputVoltage: 4.5,   // Start close to target for quicker convergence
+    outputCurrent: 0.5,   // Start with realistic current
     inputVoltage: 20.0,
     temperature: 30.0,
     // Memory group presets (like original test client)
@@ -92,7 +92,7 @@ export class MockDPS150SerialPort extends EventTarget implements SerialPort {
       // Gradually approach set voltage with some noise
       const voltageDiff = this.mockData.setVoltage - this.mockData.outputVoltage;
       this.mockData.outputVoltage += voltageDiff * 0.1 + (Math.random() - 0.5) * 0.01;
-      
+
       // Simulate current with realistic variation (around 0.5A as in original test)
       this.mockData.outputCurrent = 0.5 + (Math.random() - 0.5) * 0.1;
     } else {
@@ -102,7 +102,7 @@ export class MockDPS150SerialPort extends EventTarget implements SerialPort {
 
     // Input voltage variations (USB-PD ~20V with small variations)
     this.mockData.inputVoltage = 20.0 + (Math.random() - 0.5) * 0.2;
-    
+
     // Temperature variations (30°C ± 2°C, rounded to 1 decimal)
     this.mockData.temperature = Math.round((30 + (Math.random() - 0.5) * 4) * 10) / 10;
 

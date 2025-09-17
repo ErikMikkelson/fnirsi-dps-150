@@ -42,19 +42,19 @@ function formatProtectionState(state: string) {
 <template>
   <div v-if="device" class="main-view" :class="{ enabled: device.outputEnabled && isConnected }" style="width: 300px">
     <div class="changeable voltage" @click="emit('change-voltage')">
-      <span>{{ formatNumber(device.voltage || 0) }}</span><span class="unit">V</span>
+      <span>{{ formatNumber(device.outputVoltage || 0) }}</span><span class="unit">V</span>
       <div class="set">
         vset <span>{{ formatNumber(device.setVoltage || 0) }}</span><span class="unit">V</span>
       </div>
     </div>
     <div class="changeable current" @click="emit('change-current')">
-      <span>{{ formatNumber(device.current || 0) }}</span><span class="unit">A</span>
+      <span>{{ formatNumber(device.outputCurrent || 0) }}</span><span class="unit">A</span>
       <div class="set">
         cset <span>{{ formatNumber(device.setCurrent || 0) }}</span><span class="unit">A</span>
       </div>
     </div>
     <div class="power">
-      <span>{{ formatNumber(device.power || 0) }}</span><span class="unit">W</span>
+      <span>{{ formatNumber(device.outputPower || 0) }}</span><span class="unit">W</span>
     </div>
     <v-chip :class="{ current: device.cv_cc === 'CC', voltage: device.cv_cc === 'CV' }" variant="flat" size="large">
       {{ device.cv_cc || 'CV' }}

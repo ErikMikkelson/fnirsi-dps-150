@@ -76,6 +76,10 @@ export const useDeviceStore = defineStore('device', {
       this.port = {} as SerialPort; // Mock port reference
       const deviceInfo = await backend.getDeviceInfo();
       Object.assign(this.device, deviceInfo);
+
+      // Ensure output is enabled to match the mock data
+      await backend.enable();
+
       return true;
     },
 
