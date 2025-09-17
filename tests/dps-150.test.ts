@@ -28,21 +28,21 @@ describe('DPS150', () => {
 
   beforeEach(() => {
     mockPort = new MockSerialPort();
-    
+
     // Reset to clean state
     mockPort.reset();
 
     // Set up default initialization responses that DPS150Client needs
-    mockPort.expectCommand(0x01, 222).respondWith(() =>
+    mockPort.expectCommand(0xa1, 222).respondWith(() =>
       mockPort.createStringResponse(222, "DPS-150")
     );
-    mockPort.expectCommand(0x01, 223).respondWith(() =>
+    mockPort.expectCommand(0xa1, 223).respondWith(() =>
       mockPort.createStringResponse(223, "1.0")
     );
-    mockPort.expectCommand(0x01, 224).respondWith(() =>
+    mockPort.expectCommand(0xa1, 224).respondWith(() =>
       mockPort.createStringResponse(224, "2.3")
     );
-    mockPort.expectCommand(0x01, 255).respondWith(() =>
+    mockPort.expectCommand(0xa1, 255).respondWith(() =>
       mockPort.createAllResponse()
     );
 
@@ -118,18 +118,18 @@ describe('DPS150', () => {
       mockPort.clearStubs();
 
       // Set up a custom response for model name
-      mockPort.expectCommand(0x01, 222).respondWith(() =>
+      mockPort.expectCommand(0xa1, 222).respondWith(() =>
         mockPort.createStringResponse(222, "CUSTOM-DPS")
       );
 
       // Set up responses for other initialization commands
-      mockPort.expectCommand(0x01, 223).respondWith(() =>
+      mockPort.expectCommand(0xa1, 223).respondWith(() =>
         mockPort.createStringResponse(223, "1.0")
       );
-      mockPort.expectCommand(0x01, 224).respondWith(() =>
+      mockPort.expectCommand(0xa1, 224).respondWith(() =>
         mockPort.createStringResponse(224, "2.3")
       );
-      mockPort.expectCommand(0x01, 255).respondWith(() =>
+      mockPort.expectCommand(0xa1, 255).respondWith(() =>
         mockPort.createAllResponse()
       );
 
@@ -138,7 +138,7 @@ describe('DPS150', () => {
       // Test that we got the custom model name during initialization
       const writtenData = mockPort.getWrittenData();
       expect(writtenData.some(data =>
-        data[2] === 0x01 && data[3] === 222
+        data[1] === 0xa1 && data[2] === 222
       )).toBe(true);
     });
 
@@ -146,24 +146,24 @@ describe('DPS150', () => {
       mockPort.clearStubs();
 
       // Set up a one-time response
-      mockPort.expectCommand(0x01, 222).respondWith(() =>
+      mockPort.expectCommand(0xa1, 222).respondWith(() =>
         mockPort.createStringResponse(222, "FIRST-CALL"),
         true  // once = true
       );
 
       // Set up a default response for subsequent calls
-      mockPort.expectCommand(0x01, 222).respondWith(() =>
+      mockPort.expectCommand(0xa1, 222).respondWith(() =>
         mockPort.createStringResponse(222, "SUBSEQUENT-CALLS")
       );
 
       // Set up responses for other initialization commands
-      mockPort.expectCommand(0x01, 223).respondWith(() =>
+      mockPort.expectCommand(0xa1, 223).respondWith(() =>
         mockPort.createStringResponse(223, "1.0")
       );
-      mockPort.expectCommand(0x01, 224).respondWith(() =>
+      mockPort.expectCommand(0xa1, 224).respondWith(() =>
         mockPort.createStringResponse(224, "2.3")
       );
-      mockPort.expectCommand(0x01, 255).respondWith(() =>
+      mockPort.expectCommand(0xa1, 255).respondWith(() =>
         mockPort.createAllResponse()
       );
 
@@ -591,7 +591,7 @@ describe('DPS150', () => {
       dps.startReader();
       // Clear any callbacks from initialization
       callback.mockClear();
-      
+
       // 複数のパケットを連続送信
       const voltagePacket = createFloatResponsePacket(192, 15.0);
       const temperaturePacket = createFloatResponsePacket(196, 25.5);
@@ -743,7 +743,7 @@ describe('DPS150', () => {
   describe('ログ出力の検証', () => {
     it('start()時に適切なログが出力される', async () => {
       const consoleSpy = vi.spyOn(console, 'log');
-      
+
       // Create a fresh DPS client that hasn't been started yet
       const freshDps = new DPS150Client(mockPort, callback);
 

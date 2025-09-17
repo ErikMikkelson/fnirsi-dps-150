@@ -110,8 +110,8 @@ export class MockSerialPort extends EventTarget implements SerialPort {
   } {
     const matcher = (command: Uint8Array) => {
       if (command.length < 4) return false;
-      if (command[2] !== cmdType) return false;
-      if (parameter !== undefined && command[3] !== parameter) return false;
+      if (command[1] !== cmdType) return false; // command[1] is c2 (command type)
+      if (parameter !== undefined && command[2] !== parameter) return false; // command[2] is c3 (parameter)
       return true;
     };
 
