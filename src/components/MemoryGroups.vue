@@ -40,22 +40,38 @@ function groupChanged(group: any, type: 'V' | 'I' | null) {
   <v-list density="compact" style="max-width: 30em" class="groups">
     <v-list-item v-for="group in (groups as any[])" :key="group.n">
       <template v-slot:prepend>
-        <v-btn size="x-small" :color="groupChanged(group, null) ? 'red' : 'green'" variant="flat" @click="emit('set-group', group)">
+        <v-btn
+          size="x-small"
+          :color="groupChanged(group, null) ? 'red' : 'green'"
+          variant="flat"
+          @click="emit('set-group', group)"
+          icon
+        >
           M{{ group.n }}
           <v-tooltip activator="parent" location="start">
-            {{ groupChanged(group, null) ? 'Update with changed values' : `Set M${group.n}` }}
+            {{
+              groupChanged(group, null)
+                ? 'Update with changed values'
+                : `Set M${group.n}`
+            }}
           </v-tooltip>
         </v-btn>
       </template>
 
-      <div @click="emit('edit-group-voltage', group)" class="changeable" :class="{ changed: groupChanged(group, 'V') }">
-        {{ formatNumber(groupsInput[group.n].setVoltage || group.setVoltage) }}V
-        <v-btn size="x-small" color="green" variant="flat">set</v-btn>
+      <div
+        @click="emit('edit-group-voltage', group)"
+        class="changeable"
+        :class="{ changed: groupChanged(group, 'V') }"
+      >
+        {{ formatNumber(groupsInput[group.n].setVoltage ?? group.setVoltage) }}V
       </div>
 
-      <div @click="emit('edit-group-current', group)" class="changeable" :class="{ changed: groupChanged(group, 'I') }">
-        {{ formatNumber(groupsInput[group.n].setCurrent || group.setCurrent) }}A
-        <v-btn size="x-small" color="green" variant="flat">set</v-btn>
+      <div
+        @click="emit('edit-group-current', group)"
+        class="changeable"
+        :class="{ changed: groupChanged(group, 'I') }"
+      >
+        {{ formatNumber(groupsInput[group.n].setCurrent ?? group.setCurrent) }}A
       </div>
     </v-list-item>
   </v-list>

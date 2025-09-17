@@ -36,7 +36,7 @@ function formatProtectionState(state: string) {
 </script>
 
 <template>
-  <div class="main-view" :class="{ enabled: device.outputClosed }" style="width: 300px">
+  <div class="main-view" :class="{ enabled: device.outputEnabled }" style="width: 300px">
     <div class="changeable voltage" @click="emit('change-voltage')">
       <span>{{ port ? formatNumber(device.outputVoltage) : '-' }}</span><span class="unit">V</span>
       <div class="set">

@@ -477,12 +477,12 @@ function downloadHistory() {
         <v-tooltip activator="parent" location="start">Disconnect</v-tooltip>
       </v-btn>
 
-      <v-btn icon variant="flat" color="green" @click="enable" v-if="!device.outputClosed" title="Enable" :disabled="!port">
+      <v-btn icon variant="flat" color="green" @click="enable" v-if="!device.outputEnabled" title="Enable" :disabled="!port">
         <v-icon>mdi-power-plug</v-icon>
         <v-tooltip activator="parent" location="start">Enable</v-tooltip>
       </v-btn>
 
-      <v-btn icon variant="flat" color="red" @click="disable" v-if="device.outputClosed" title="Disable">
+      <v-btn icon variant="flat" color="red" @click="disable" v-if="device.outputEnabled" title="Disable">
         <v-icon>mdi-power-plug-off</v-icon>
         <v-tooltip activator="parent" location="start">Disable</v-tooltip>
       </v-btn>

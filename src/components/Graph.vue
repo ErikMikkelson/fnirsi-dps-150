@@ -95,8 +95,11 @@ function updateGraph() {
     xaxis: {
       domain: [0.1, 0.9],
       type: 'date',
-      range: [new Date(Date.now() - 1000 * props.graphOptions.duration), new Date()],
-      tickformat: '%M:%S\n %H',
+      range: [
+        new Date(Date.now() - 1000 * props.graphOptions.duration),
+        new Date(),
+      ],
+      tickformat: '%H:%M:%S',
     },
     yaxis: {
       title: {

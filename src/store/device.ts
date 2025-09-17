@@ -42,7 +42,7 @@ export const useDeviceStore = defineStore('device', {
       meteringClosed: false,
       outputCapacity: 0,
       outputEnergy: 0,
-      outputClosed: false,
+      outputEnabled: false,
       protectionState: '',
       mode: 'CV',
       upperLimitVoltage: 0,

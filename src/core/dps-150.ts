@@ -80,7 +80,7 @@ const PROTECTION_STATES = [
 ];
 
 export interface SystemInfo {
-  outputClosed: boolean;
+  outputEnabled: boolean;
   cv_cc: 'CV' | 'CC';
   protectionState: string;
   voltage: number;
@@ -132,7 +132,7 @@ interface DeviceData {
   temperature?: number;
   outputCapacity?: number;
   outputEnergy?: number;
-  outputClosed?: boolean;
+  outputEnabled?: boolean;
   protectionState?: string;
   mode?: "CC" | "CV";
   modelName?: string;
@@ -353,11 +353,11 @@ export class DPS150 implements DeviceClient {
 			case 217: // output capacity
 				callback({ outputCapacity: view.getFloat32(0, true) });
 				break;
-			case 218: // output energery
+			case 218: // output energy
 				callback({ outputEnergy: view.getFloat32(0, true) });
 				break;
 			case 219: // output closed?
-				callback({ outputClosed: c5[0] === 1 });
+				callback({ outputEnabled: c5[0] === 1 });
 				break;
 			case 220: // protection
 				callback({ protectionState: PROTECTION_STATES[c5[0]] });
@@ -430,7 +430,7 @@ export class DPS150 implements DeviceClient {
 					const d26 = c5[97]; // volume
 					const d27 = c5[98]; // metering open=0 or close=1
 					const d28 = view.getFloat32(99, true);  // output capacity [Ah]
-					const d29 = view.getFloat32(103, true); // output energery [Wh]
+					const d29 = view.getFloat32(103, true); // output energy [Wh]
 					const d30 = c5[107]; // output closed?
 					const d31 = c5[108]; // protection OVP=1, OCP=2, OPP=3, OTP=4, LVP=5
 					const d32 = c5[109]; // cc=0 or cv=1
@@ -451,7 +451,7 @@ export class DPS150 implements DeviceClient {
 						d31, d32, d37, d38, d39, d40, d41, d42, d43
 					});
 					*/
-					// dump unknwon data
+					// dump unknown data
 					/*
 					console.log(c5.length, {
 						d31, d33, d39, d40, d41, d42, d43
@@ -493,7 +493,7 @@ export class DPS150 implements DeviceClient {
 						outputCapacity: d28,
 						outputEnergy: d29,
 
-						outputClosed: d30 === 1,
+						outputEnabled: d30 === 1,
 						protectionState: PROTECTION_STATES[d31],
 						mode: d32 === 0 ? "CC" : "CV",
 
@@ -531,7 +531,7 @@ export class DPS150 implements DeviceClient {
 							meteringClosed: d27 === 0,
 							outputCapacity: d28,
 							outputEnergy: d29,
-							outputClosed: d30 === 1,
+							outputEnabled: d30 === 1,
 							protectionState: PROTECTION_STATES[d31],
 							mode: d32 === 0 ? "CC" : "CV",
 							upperLimitVoltage: d37,

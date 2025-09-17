@@ -218,13 +218,13 @@ describe('DPS150', () => {
     it('出力オン/オフ状態 (c3=219) を正しく解析する', () => {
       // 出力ON
       dps.parseData(0xf0, 0xa1, 219, 1, new Uint8Array([1]));
-      expect(callback).toHaveBeenCalledWith({ outputClosed: true });
+      expect(callback).toHaveBeenCalledWith({ outputEnabled: true });
 
       callback.mockClear();
 
       // 出力OFF
       dps.parseData(0xf0, 0xa1, 219, 1, new Uint8Array([0]));
-      expect(callback).toHaveBeenCalledWith({ outputClosed: false });
+      expect(callback).toHaveBeenCalledWith({ outputEnabled: false });
     });
 
     it('保護状態 (c3=220) を正しく解析する', () => {
@@ -327,7 +327,7 @@ describe('DPS150', () => {
         meteringClosed: false,
         outputCapacity: 1.5,
         outputEnergy: 25.3,
-        outputClosed: true,
+        outputEnabled: true,
         protectionState: 0,
         mode: "CC",
         upperLimitVoltage: 30.0,
@@ -360,7 +360,7 @@ describe('DPS150', () => {
       view.setFloat32(99, testData.outputCapacity, true);
       view.setFloat32(103, testData.outputEnergy, true);
 
-      data[107] = testData.outputClosed ? 1 : 0;
+      data[107] = testData.outputEnabled ? 1 : 0;
       data[108] = testData.protectionState;
       data[109] = testData.mode === "CC" ? 0 : 1;
 
@@ -395,7 +395,7 @@ describe('DPS150', () => {
       expect(receivedData.brightness).toBe(testData.brightness);
       expect(receivedData.volume).toBe(testData.volume);
       expect(receivedData.meteringClosed).toBe(testData.meteringClosed);
-      expect(receivedData.outputClosed).toBe(testData.outputClosed);
+      expect(receivedData.outputEnabled).toBe(testData.outputEnabled);
       expect(receivedData.protectionState).toBe("");
       expect(receivedData.mode).toBe(testData.mode);
     });

@@ -9,9 +9,10 @@ import {
 export class TestDPS150 implements DeviceClient {
   private intervalId: NodeJS.Timeout | null = null;
   private onUpdate: ((data: any) => void) | null = null;
+  private time = 0;
 
   private systemInfo: SystemInfo = {
-    outputClosed: true,
+    outputEnabled: false,
     cv_cc: 'CV',
     protectionState: '',
     voltage: 0,
@@ -27,8 +28,8 @@ export class TestDPS150 implements DeviceClient {
     firmwareVersion: '1.0',
     upperLimitVoltage: 150,
     upperLimitCurrent: 10,
-    setVoltage: 0,
-    setCurrent: 0,
+    setVoltage: 5,
+    setCurrent: 1,
     group1setVoltage: 1,
     group1setCurrent: 0.1,
     group2setVoltage: 2,
@@ -65,17 +66,31 @@ export class TestDPS150 implements DeviceClient {
       clearInterval(this.intervalId);
     }
     this.intervalId = setInterval(() => {
-      // Simulate some fluctuations
-      this.systemInfo.voltage = this.deviceInfo.setVoltage * (this.systemInfo.outputClosed ? 1 : 0) + (Math.random() - 0.5) * 0.01;
-      this.systemInfo.current = this.deviceInfo.setCurrent * (this.systemInfo.outputClosed ? 1 : 0) + (Math.random() - 0.5) * 0.001;
-      this.systemInfo.power = this.systemInfo.voltage * this.systemInfo.current;
+      this.time += 0.1;
+      if (this.systemInfo.outputEnabled) {
+        // Simulate a sine wave for voltage and a noisy signal for current
+        const setVoltage = this.deviceInfo.setVoltage;
+        const setCurrent = this.deviceInfo.setCurrent;
+
+        this.systemInfo.voltage =
+          setVoltage / 2 + (Math.sin(this.time) * setVoltage) / 2;
+        this.systemInfo.current =
+          setCurrent / 2 + (Math.cos(this.time * 2) * setCurrent) / 2;
+        this.systemInfo.power =
+          this.systemInfo.voltage * this.systemInfo.current;
+      } else {
+        this.systemInfo.voltage = 0;
+        this.systemInfo.current = 0;
+        this.systemInfo.power = 0;
+      }
+
       this.systemInfo.inputVoltage = 12.5 + (Math.random() - 0.5) * 0.1;
       this.systemInfo.temperature = 30 + (Math.random() - 0.5) * 2;
 
       if (this.onUpdate) {
         this.onUpdate({ type: 'systemInfo', data: this.systemInfo });
       }
-    }, 500);
+    }, 100);
   }
 
   async getFloatValue(command: number): Promise<number> {
@@ -105,11 +120,11 @@ export class TestDPS150 implements DeviceClient {
   }
 
   async enable(): Promise<void> {
-    this.systemInfo.outputClosed = true;
+    this.systemInfo.outputEnabled = true;
   }
 
   async disable(): Promise<void> {
-    this.systemInfo.outputClosed = false;
+    this.systemInfo.outputEnabled = false;
   }
 
   async startMetering(): Promise<void> {
