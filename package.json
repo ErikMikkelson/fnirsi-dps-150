@@ -28,7 +28,7 @@
     "jsdom": "^27.0.0",
     "playwright": "^1.55.0",
     "typescript": "5.9.2",
-    "vite": "^7.1.5",
+    "vite": "^7.1.6",
     "vite-plugin-vuetify": "^2.1.2",
     "vitest": "^3.2.4",
     "vuetify": "^3.10.2"
