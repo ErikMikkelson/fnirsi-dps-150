@@ -1,10 +1,10 @@
 import { sleep } from '../utils';
 import {
   ALL,
+  CMD_BAUD,
   CMD_GET,
+  CMD_SESSION,
   CMD_SET,
-  CMD_XXX_176,
-  CMD_XXX_193,
   DataType,
   FIRMWARE_VERSION,
   HARDWARE_VERSION,
@@ -60,7 +60,7 @@ export class DPS150Client implements DeviceClient {
 		console.log('stop');
 		// Try to send a final command, but don't fail if the port is already closing
 		try {
-			await this.sendCommand(HEADER_OUTPUT, CMD_XXX_193, 0, 0);
+			await this.sendCommand(HEADER_OUTPUT, CMD_SESSION, 0, 0);
 		} catch (error) {
 			console.warn("Could not send stop command, port might be closed already:", error);
 		}
@@ -155,9 +155,9 @@ export class DPS150Client implements DeviceClient {
 	}
 
 	async initCommand(): Promise<void> {
-		await this.sendCommand(HEADER_OUTPUT, CMD_XXX_193, 0, 1); // CMD_1
+		await this.sendCommand(HEADER_OUTPUT, CMD_SESSION, 0, 1); // CMD_1
 		// new int[5] { 9600, 19200, 38400, 57600, 115200 };
-		await this.sendCommand(HEADER_OUTPUT, CMD_XXX_176, 0, [9600, 19200, 38400, 57600, 115200].indexOf(115200) + 1); // CMD_13
+		await this.sendCommand(HEADER_OUTPUT, CMD_BAUD, 0, [9600, 19200, 38400, 57600, 115200].indexOf(115200) + 1); // CMD_13
 
 		await this.sendCommand(HEADER_OUTPUT, CMD_GET, MODEL_NAME, 0); // get model name
 		await this.sendCommand(HEADER_OUTPUT, CMD_GET, HARDWARE_VERSION, 0); // get hardware version

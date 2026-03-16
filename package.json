@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "test:e2e": "playwright test"
   },
   "keywords": [
     "fnirsi",
@@ -20,6 +21,7 @@
   "author": "cho45",
   "license": "MIT",
   "devDependencies": {
+    "@playwright/test": "1.55.0",
     "@types/node": "^22",
     "@types/w3c-web-serial": "1.0.8",
     "@vitejs/plugin-vue": "6.0.1",
@@ -33,7 +35,7 @@
     "vitest": "3.2.4",
     "vuetify": "3.10.2"
   },
-  "packageManager": "yarn@4.10.2+sha512.0b0e54ad5381f0a35184957bd3ea44e37f5a4fb1960b903b0fb9a3c7c2c009190455c41ef2a1977b1dbd3b72c5f152da696e9c52e2bc78a011b6adea8ee73ba3",
+  "packageManager": "yarn@4.13.0",
   "dependencies": {
     "@mdi/font": "7.4.47",
     "comlink": "4.4.2",

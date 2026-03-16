@@ -105,7 +105,7 @@ function formatNumberForInput(number: string | number, sep = ',') {
             <span class="number" v-else style="color: rgba(0,0,0,.54);">{{ formatNumberForInput(prev) }}</span>
             <span class="unit">{{ unit }}</span>
           </div>
-          <table id="numberInput">
+          <table id="numberInputTable">
             <tbody>
               <tr>
                 <td><v-btn variant="tonal" class="" @click="numberInputButton">7</v-btn></td>

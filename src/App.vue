@@ -163,9 +163,10 @@ function updateGraph() {
 
 watch(history, updateGraph, { deep: true });
 watch(() => port, (newPort) => {
-  // In test mode, don't show overlay if we're using test client
   if (import.meta.env.VITE_USE_TEST_CLIENT) {
-    connectOverlay.value = false;
+    // In test mode, show overlay only when ?noconnect is used
+    const params = new URLSearchParams(window.location.search);
+    connectOverlay.value = params.has('noconnect');
   } else {
     connectOverlay.value = !newPort;
   }
@@ -181,7 +182,13 @@ onMounted(async () => {
 
   // Auto-connect in test mode
   if (import.meta.env.VITE_USE_TEST_CLIENT === 'true') {
-    await autoConnect()
+    // Expose store for E2E testing
+    (window as any).__deviceStore = deviceStore;
+
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has('noconnect')) {
+      await autoConnect();
+    }
   }
 });
 

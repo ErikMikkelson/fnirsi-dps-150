@@ -2,10 +2,9 @@ export const HEADER_INPUT  = 0xf0; // 240
 export const HEADER_OUTPUT = 0xf1; // 241
 
 export const CMD_GET     = 0xa1; // 161
-export const CMD_XXX_176 = 0xb0; // 176
+export const CMD_BAUD    = 0xb0; // 176 - Baud rate configuration
 export const CMD_SET     = 0xb1; // 177
-export const CMD_XXX_192 = 0xc0; // 192
-export const CMD_XXX_193 = 0xc1; // 193
+export const CMD_SESSION = 0xc1; // 193 - Session control
 
 // float
 export const VOLTAGE_SET = 193;
