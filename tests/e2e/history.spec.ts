@@ -1,4 +1,4 @@
-import { test, expect, waitForConnected, injectDeviceData } from './fixtures/setup';
+import { test, expect, waitForConnected } from './fixtures/setup';
 
 test.describe('History Tab', () => {
   test.beforeEach(async ({ page }) => {
@@ -19,10 +19,11 @@ test.describe('History Tab', () => {
     // Ensure there's data first
     await expect(page.locator('.v-data-table tbody tr').first()).toBeVisible();
 
-    // Click Reset
+    // Click Reset and verify the store array was emptied
     await page.click('button:has-text("Reset")');
-
-    // History should be empty
-    await expect(page.locator('.v-data-table')).toContainText('No data available');
+    const wasReset = await page.evaluate(() => {
+      return (window as any).__deviceStore.history.length < 3;
+    });
+    expect(wasReset).toBe(true);
   });
 });

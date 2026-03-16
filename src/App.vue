@@ -163,9 +163,10 @@ function updateGraph() {
 
 watch(history, updateGraph, { deep: true });
 watch(() => port, (newPort) => {
-  // In test mode, don't show overlay if we're using test client
   if (import.meta.env.VITE_USE_TEST_CLIENT) {
-    connectOverlay.value = false;
+    // In test mode, show overlay only when ?noconnect is used
+    const params = new URLSearchParams(window.location.search);
+    connectOverlay.value = params.has('noconnect');
   } else {
     connectOverlay.value = !newPort;
   }

@@ -77,3 +77,6 @@ temp/
 .claude/
 
 dist
+
+test-results
+playwright-report
