@@ -56,10 +56,10 @@ function formatProtectionState(state: string) {
     <div class="power">
       <span>{{ formatNumber(device.outputPower || 0) }}</span><span class="unit">W</span>
     </div>
-    <v-chip :class="{ current: device.cv_cc === 'CC', voltage: device.cv_cc === 'CV' }" variant="flat" size="large">
-      {{ device.cv_cc || 'CV' }}
+    <v-chip :class="{ current: device.mode === 'CC', voltage: device.mode === 'CV' }" variant="flat" size="large">
+      {{ device.mode || 'CV' }}
       <v-tooltip activator="parent" location="start">
-        {{ device.cv_cc === 'CC' ? 'Constant Current' : device.cv_cc === 'CV' ? 'Constant Voltage' : 'Constant Voltage' }}
+        {{ device.mode === 'CC' ? 'Constant Current' : 'Constant Voltage' }}
       </v-tooltip>
     </v-chip>
     <v-chip :color="device.protectionState ? 'red' : 'green'" variant="flat" size="large">

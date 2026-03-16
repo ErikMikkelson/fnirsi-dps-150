@@ -14,20 +14,20 @@ export const useDeviceStore = defineStore('device', {
   state: () => ({
     port: null as SerialPort | null,
     device: {
-      model: '',
-      serialNumber: '',
+      modelName: '',
+      hardwareVersion: '',
       firmwareVersion: '',
       upperLimitVoltage: 0,
       upperLimitCurrent: 0,
       setVoltage: 0,
       setCurrent: 0,
-      voltage: 0,
-      current: 0,
-      power: 0,
+      outputVoltage: 0,
+      outputCurrent: 0,
+      outputPower: 0,
       inputVoltage: 0,
       temperature: 0,
       outputEnabled: false,
-      cv_cc: 'CV',
+      mode: 'CV' as 'CV' | 'CC',
       protectionState: '',
       group1setVoltage: 0,
       group1setCurrent: 0,
@@ -48,6 +48,9 @@ export const useDeviceStore = defineStore('device', {
       lowVoltageProtection: 0,
       brightness: 0,
       volume: 0,
+      outputCapacity: 0,
+      outputEnergy: 0,
+      meteringClosed: false,
     },
     history: [] as { time: Date; v: number; i: number; p: number }[],
     program: {
@@ -61,14 +64,16 @@ export const useDeviceStore = defineStore('device', {
       // Try to auto-connect with test client if enabled
       const onUpdateCallback = Comlink.proxy((data: any) => {
         Object.assign(this.device, data);
-        this.history.unshift({
-          time: new Date(),
-          v: data.outputVoltage || 0,
-          i: data.outputCurrent || 0,
-          p: data.outputPower || 0,
-        });
-        if (this.history.length > 10000) {
-          this.history.splice(10000);
+        if (data.outputVoltage !== undefined) {
+          this.history.unshift({
+            time: new Date(),
+            v: data.outputVoltage,
+            i: data.outputCurrent ?? 0,
+            p: data.outputPower ?? 0,
+          });
+          if (this.history.length > 10000) {
+            this.history.splice(10000);
+          }
         }
       });
 
@@ -103,14 +108,16 @@ export const useDeviceStore = defineStore('device', {
 
       const onUpdateCallback = Comlink.proxy((data: any) => {
         Object.assign(this.device, data);
-        this.history.unshift({
-          time: new Date(),
-          v: data.outputVoltage || 0,
-          i: data.outputCurrent || 0,
-          p: data.outputPower || 0,
-        });
-        if (this.history.length > 10000) {
-          this.history.splice(10000);
+        if (data.outputVoltage !== undefined) {
+          this.history.unshift({
+            time: new Date(),
+            v: data.outputVoltage,
+            i: data.outputCurrent ?? 0,
+            p: data.outputPower ?? 0,
+          });
+          if (this.history.length > 10000) {
+            this.history.splice(10000);
+          }
         }
       });
 
