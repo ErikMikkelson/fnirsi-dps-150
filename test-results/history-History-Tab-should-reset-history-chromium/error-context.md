@@ -1,0 +1,194 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e4]:
+    - banner [ref=e5]:
+      - generic [ref=e6]:
+        - generic [ref=e8]:
+          - text: FNIRSI DPS-150
+          - generic [ref=e9]: DPS-150 HW:1.0 FW:2.3
+        - generic [ref=e11]: 28.60℃
+        - generic [ref=e13]: "Input: 19.97V"
+        - button [ref=e14] [cursor=pointer]:
+          - generic [ref=e16] [cursor=pointer]: 󰌙
+        - button "Disable" [ref=e17] [cursor=pointer]:
+          - generic [ref=e19] [cursor=pointer]: 󰚦
+    - main [ref=e20]:
+      - generic [ref=e22]:
+        - generic [ref=e23]:
+          - generic [ref=e26]:
+            - img:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: 11:58:25
+                    - generic:
+                      - generic: 11:58:30
+                    - generic:
+                      - generic: 11:58:35
+                    - generic:
+                      - generic: 11:58:40
+                    - generic:
+                      - generic: 11:58:45
+                    - generic:
+                      - generic: 11:58:50
+                  - generic:
+                    - generic:
+                      - generic: "0"
+                    - generic:
+                      - generic: "1"
+                    - generic:
+                      - generic: "2"
+                    - generic:
+                      - generic: "3"
+                    - generic:
+                      - generic: "4"
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic: "0"
+                      - generic:
+                        - generic: "0.1"
+                      - generic:
+                        - generic: "0.2"
+                      - generic:
+                        - generic: "0.3"
+                      - generic:
+                        - generic: "0.4"
+                      - generic:
+                        - generic: "0.5"
+                    - generic:
+                      - generic:
+                        - generic: "0"
+                      - generic:
+                        - generic: "0.5"
+                      - generic:
+                        - generic: "1"
+                      - generic:
+                        - generic: "1.5"
+                      - generic:
+                        - generic: "2"
+            - img:
+              - generic:
+                - generic:
+                  - generic: V
+                - generic:
+                  - generic: I
+                - generic:
+                  - generic: P
+            - img
+          - generic [ref=e48]:
+            - tablist [ref=e49]:
+              - generic [ref=e51]:
+                - tab "Memory Groups" [ref=e52] [cursor=pointer]:
+                  - generic [ref=e53] [cursor=pointer]: Memory Groups
+                - tab "Metering" [ref=e54] [cursor=pointer]:
+                  - generic [ref=e55] [cursor=pointer]: Metering
+                - tab "Protections" [ref=e56] [cursor=pointer]:
+                  - generic [ref=e57] [cursor=pointer]: Protections
+                - tab "Program" [ref=e58] [cursor=pointer]:
+                  - generic [ref=e59] [cursor=pointer]: Program
+                - tab "History" [selected] [ref=e60] [cursor=pointer]:
+                  - generic [ref=e61] [cursor=pointer]: History
+                - tab "Settings" [ref=e62] [cursor=pointer]:
+                  - generic [ref=e63] [cursor=pointer]: Settings
+            - generic [ref=e66]:
+              - generic [ref=e67]:
+                - button "Download" [ref=e69] [cursor=pointer]:
+                  - generic [ref=e71] [cursor=pointer]: 󱑢
+                  - generic [ref=e72] [cursor=pointer]: Download
+                - button "Reset" [active] [ref=e74] [cursor=pointer]:
+                  - generic [ref=e76] [cursor=pointer]: 󰅗
+                  - generic [ref=e77] [cursor=pointer]: Reset
+              - generic [ref=e78]:
+                - table [ref=e80]:
+                  - rowgroup [ref=e81]:
+                    - row "Time Voltage Current Power" [ref=e82]:
+                      - cell "Time" [ref=e83]:
+                        - generic [ref=e84]:
+                          - generic [ref=e85]: Time
+                          - generic [ref=e86]: 󰁝
+                      - cell "Voltage" [ref=e87]:
+                        - generic [ref=e89]: Voltage
+                      - cell "Current" [ref=e90]:
+                        - generic [ref=e92]: Current
+                      - cell "Power" [ref=e93]:
+                        - generic [ref=e95]: Power
+                  - rowgroup [ref=e96]:
+                    - row "2026-03-16T11:58:50.873Z 4.591V 0.476A 2.183W" [ref=e97]:
+                      - cell "2026-03-16T11:58:50.873Z" [ref=e98]
+                      - cell "4.591V" [ref=e99]
+                      - cell "0.476A" [ref=e100]
+                      - cell "2.183W" [ref=e101]
+                    - row "2026-03-16T11:58:50.379Z 4.549V 0.491A 2.235W" [ref=e102]:
+                      - cell "2026-03-16T11:58:50.379Z" [ref=e103]
+                      - cell "4.549V" [ref=e104]
+                      - cell "0.491A" [ref=e105]
+                      - cell "2.235W" [ref=e106]
+                    - row "2026-03-16T11:58:50.150Z 4.500V 0.500A 2.250W" [ref=e107]:
+                      - cell "2026-03-16T11:58:50.150Z" [ref=e108]
+                      - cell "4.500V" [ref=e109]
+                      - cell "0.500A" [ref=e110]
+                      - cell "2.250W" [ref=e111]
+                - separator [ref=e112]
+                - generic [ref=e113]:
+                  - combobox [ref=e118] [cursor=pointer]:
+                    - generic [ref=e120] [cursor=pointer]:
+                      - generic [ref=e122] [cursor=pointer]: "10"
+                      - combobox "Open": "10"
+                    - generic [ref=e124] [cursor=pointer]: 󰍝
+                  - generic [ref=e126]: 1-3 of 3
+                  - navigation "Pagination Navigation" [ref=e128]:
+                    - list [ref=e129]:
+                      - listitem [ref=e130]:
+                        - button "First page" [disabled]:
+                          - generic:
+                            - generic: 󰘀
+                      - listitem [ref=e131]:
+                        - button "Previous page" [disabled]:
+                          - generic:
+                            - generic: 󰅁
+                      - listitem [ref=e132]:
+                        - button "Next page" [disabled]:
+                          - generic:
+                            - generic: 󰅂
+                      - listitem [ref=e133]:
+                        - button "Last page" [disabled]:
+                          - generic:
+                            - generic: 󰘁
+        - generic [ref=e135]:
+          - generic [ref=e136] [cursor=pointer]:
+            - generic [ref=e137] [cursor=pointer]: "4.722"
+            - generic [ref=e138] [cursor=pointer]: V
+            - generic [ref=e139] [cursor=pointer]:
+              - text: vset
+              - generic [ref=e140] [cursor=pointer]: "5.000"
+              - generic [ref=e141] [cursor=pointer]: V
+          - generic [ref=e142] [cursor=pointer]:
+            - generic [ref=e143] [cursor=pointer]: "0.491"
+            - generic [ref=e144] [cursor=pointer]: A
+            - generic [ref=e145] [cursor=pointer]:
+              - text: cset
+              - generic [ref=e146] [cursor=pointer]: "1.000"
+              - generic [ref=e147] [cursor=pointer]: A
+          - generic [ref=e148]:
+            - generic [ref=e149]: "2.320"
+            - generic [ref=e150]: W
+          - generic [ref=e152]: CV
+          - generic [ref=e154]: OK
+  - text: .
+  - generic:
+    - tooltip
+    - tooltip
+    - tooltip
+    - tooltip
+    - tooltip
+    - tooltip
+    - tooltip
+    - tooltip
+    - tooltip
+    - tooltip
+  - img [ref=e155]
+```

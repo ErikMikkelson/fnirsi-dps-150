@@ -1,0 +1,184 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e4]:
+    - banner [ref=e5]:
+      - generic [ref=e6]:
+        - generic [ref=e8]:
+          - text: FNIRSI DPS-150
+          - generic [ref=e9]: "HW: FW:"
+        - generic [ref=e11]: 0.000℃
+        - generic [ref=e13]: "Input: 0.000V"
+        - button [ref=e14] [cursor=pointer]:
+          - generic [ref=e16] [cursor=pointer]: 󰌙
+        - button "Enable" [disabled]:
+          - generic:
+            - generic: 󰚥
+    - main [ref=e17]:
+      - generic [ref=e19]:
+        - generic [ref=e20]:
+          - generic [ref=e23]:
+            - img:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: 11:58:05
+                    - generic:
+                      - generic: 11:58:10
+                    - generic:
+                      - generic: 11:58:15
+                    - generic:
+                      - generic: 11:58:20
+                    - generic:
+                      - generic: 11:58:25
+                    - generic:
+                      - generic: 11:58:30
+                  - generic:
+                    - generic:
+                      - generic: "0"
+                    - generic:
+                      - generic: "0.5"
+                    - generic:
+                      - generic: "1"
+                    - generic:
+                      - generic: "1.5"
+                    - generic:
+                      - generic: "2"
+                    - generic:
+                      - generic: "2.5"
+                    - generic:
+                      - generic: "3"
+                    - generic:
+                      - generic: "3.5"
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic: "0"
+                      - generic:
+                        - generic: "0.5"
+                      - generic:
+                        - generic: "1"
+                      - generic:
+                        - generic: "1.5"
+                      - generic:
+                        - generic: "2"
+                      - generic:
+                        - generic: "2.5"
+                      - generic:
+                        - generic: "3"
+                      - generic:
+                        - generic: "3.5"
+                    - generic:
+                      - generic:
+                        - generic: "0"
+                      - generic:
+                        - generic: "0.5"
+                      - generic:
+                        - generic: "1"
+                      - generic:
+                        - generic: "1.5"
+                      - generic:
+                        - generic: "2"
+                      - generic:
+                        - generic: "2.5"
+                      - generic:
+                        - generic: "3"
+                      - generic:
+                        - generic: "3.5"
+            - img:
+              - generic:
+                - generic:
+                  - generic: V
+                - generic:
+                  - generic: I
+                - generic:
+                  - generic: P
+            - img
+          - generic [ref=e45]:
+            - tablist [ref=e46]:
+              - generic [ref=e48]:
+                - tab "Memory Groups" [selected] [ref=e49] [cursor=pointer]:
+                  - generic [ref=e50] [cursor=pointer]: Memory Groups
+                - tab "Metering" [ref=e51] [cursor=pointer]:
+                  - generic [ref=e52] [cursor=pointer]: Metering
+                - tab "Protections" [ref=e53] [cursor=pointer]:
+                  - generic [ref=e54] [cursor=pointer]: Protections
+                - tab "Program" [ref=e55] [cursor=pointer]:
+                  - generic [ref=e56] [cursor=pointer]: Program
+                - tab "History" [ref=e57] [cursor=pointer]:
+                  - generic [ref=e58] [cursor=pointer]: History
+                - tab "Settings" [ref=e59] [cursor=pointer]:
+                  - generic [ref=e60] [cursor=pointer]: Settings
+            - list [ref=e64]:
+              - listitem [ref=e65]:
+                - button "M1" [ref=e67] [cursor=pointer]:
+                  - generic [ref=e68] [cursor=pointer]: M1
+                - generic [ref=e69]:
+                  - generic [ref=e70] [cursor=pointer]: 0.000V
+                  - generic [ref=e71] [cursor=pointer]: 0.000A
+              - listitem [ref=e72]:
+                - button "M2" [ref=e74] [cursor=pointer]:
+                  - generic [ref=e75] [cursor=pointer]: M2
+                - generic [ref=e76]:
+                  - generic [ref=e77] [cursor=pointer]: 0.000V
+                  - generic [ref=e78] [cursor=pointer]: 0.000A
+              - listitem [ref=e79]:
+                - button "M3" [ref=e81] [cursor=pointer]:
+                  - generic [ref=e82] [cursor=pointer]: M3
+                - generic [ref=e83]:
+                  - generic [ref=e84] [cursor=pointer]: 0.000V
+                  - generic [ref=e85] [cursor=pointer]: 0.000A
+              - listitem [ref=e86]:
+                - button "M4" [ref=e88] [cursor=pointer]:
+                  - generic [ref=e89] [cursor=pointer]: M4
+                - generic [ref=e90]:
+                  - generic [ref=e91] [cursor=pointer]: 0.000V
+                  - generic [ref=e92] [cursor=pointer]: 0.000A
+              - listitem [ref=e93]:
+                - button "M5" [ref=e95] [cursor=pointer]:
+                  - generic [ref=e96] [cursor=pointer]: M5
+                - generic [ref=e97]:
+                  - generic [ref=e98] [cursor=pointer]: 0.000V
+                  - generic [ref=e99] [cursor=pointer]: 0.000A
+              - listitem [ref=e100]:
+                - button "M6" [ref=e102] [cursor=pointer]:
+                  - generic [ref=e103] [cursor=pointer]: M6
+                - generic [ref=e104]:
+                  - generic [ref=e105] [cursor=pointer]: 0.000V
+                  - generic [ref=e106] [cursor=pointer]: 0.000A
+        - generic [ref=e108]:
+          - generic [ref=e109] [cursor=pointer]:
+            - generic [ref=e110] [cursor=pointer]: "0.000"
+            - generic [ref=e111] [cursor=pointer]: V
+            - generic [ref=e112] [cursor=pointer]:
+              - text: vset
+              - generic [ref=e113] [cursor=pointer]: "0.000"
+              - generic [ref=e114] [cursor=pointer]: V
+          - generic [ref=e115] [cursor=pointer]:
+            - generic [ref=e116] [cursor=pointer]: "0.000"
+            - generic [ref=e117] [cursor=pointer]: A
+            - generic [ref=e118] [cursor=pointer]:
+              - text: cset
+              - generic [ref=e119] [cursor=pointer]: "0.000"
+              - generic [ref=e120] [cursor=pointer]: A
+          - generic [ref=e121]:
+            - generic [ref=e122]: "0.000"
+            - generic [ref=e123]: W
+          - generic [ref=e125]: CV
+          - generic [ref=e127]: OK
+  - text: .
+  - generic:
+    - tooltip
+    - tooltip
+    - tooltip
+    - tooltip
+    - tooltip
+    - tooltip
+    - tooltip
+    - tooltip
+    - tooltip
+    - tooltip
+  - img [ref=e128]
+```

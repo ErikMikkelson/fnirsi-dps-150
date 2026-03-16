@@ -509,6 +509,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@playwright/test@npm:1.55.0":
+  version: 1.55.0
+  resolution: "@playwright/test@npm:1.55.0"
+  dependencies:
+    playwright: "npm:1.55.0"
+  bin:
+    playwright: cli.js
+  checksum: 10c0/e68b59cd8271f1b57c0649fc0562ab2d5f6bba8c3653dd7bd52ca1338dc380fde34588d0254e3cd3f0f2b20af04a80dfb080419ceb7475990bb2fc4d8c474984
+  languageName: node
+  linkType: hard
+
 "@plotly/d3-sankey-circular@npm:0.33.1":
   version: 0.33.1
   resolution: "@plotly/d3-sankey-circular@npm:0.33.1"
@@ -2433,6 +2444,7 @@ __metadata:
   resolution: "fnirsi-dps-150@workspace:."
   dependencies:
     "@mdi/font": "npm:7.4.47"
+    "@playwright/test": "npm:1.55.0"
     "@types/node": "npm:^22"
     "@types/w3c-web-serial": "npm:1.0.8"
     "@vitejs/plugin-vue": "npm:6.0.1"
