@@ -88,23 +88,9 @@ export const useDeviceStore = defineStore('device', {
       return true;
     },
 
-    async start(p: SerialPort) {
-      if (!p) return;
-      this.port = p;
-
-      await p.open({
-        baudRate: 115200,
-        bufferSize: 1024,
-        dataBits: 8,
-        stopBits: 1,
-        flowControl: 'hardware',
-        parity: 'none'
-      });
-
-      if (!p.readable || !p.writable) {
-        console.error('Port does not have readable or writable streams');
-        return;
-      }
+    async connect() {
+      const port = await navigator.serial.requestPort();
+      const portInfo = port.getInfo();
 
       const onUpdateCallback = Comlink.proxy((data: any) => {
         Object.assign(this.device, data);
@@ -121,13 +107,12 @@ export const useDeviceStore = defineStore('device', {
         }
       });
 
-      await backend.connect(p, onUpdateCallback);
+      // Pass only the port info (plain object) to the worker.
+      // The worker finds the same port via navigator.serial.getPorts().
+      await backend.connect(portInfo, onUpdateCallback);
+      this.port = port; // Keep reference for UI state tracking
       const deviceInfo = await backend.getDeviceInfo();
       Object.assign(this.device, deviceInfo);
-    },
-
-    async connect() {
-      this.start(await navigator.serial.requestPort());
     },
 
     async disconnect() {
@@ -171,13 +156,10 @@ export const useDeviceStore = defineStore('device', {
     },
 
     async abortExecuteCommands() {
-      // This functionality doesn't exist in the worker, so we just disconnect
-      // to stop whatever is happening. A better implementation would be to have
-      // an abort signal in the worker.
+      // Disconnect to stop the running program. The user will need to reconnect.
+      // A better implementation would use an AbortController in the worker.
       await backend.disconnect();
-      if (this.port) {
-        await this.start(this.port);
-      }
+      this.port = null;
     },
 
     resetHistory() {
