@@ -15,7 +15,7 @@ const { device, port, connect, disconnect, enable, disable, formatNumber } = def
     <v-app-bar-title>
       FNIRSI DPS-150
       <span class="ms-2" style="font-size: 50%">
-        {{ device.model }} SN:{{ device.serialNumber }} FW:{{ device.firmwareVersion }}
+        {{ device.modelName }} HW:{{ device.hardwareVersion }} FW:{{ device.firmwareVersion }}
       </span>
     </v-app-bar-title>
 

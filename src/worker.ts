@@ -13,7 +13,17 @@ const exposed = {
     console.log('Auto-connected to mock DPS-150')
   },
 
-  async connect(port: SerialPort, onUpdate: (data: any) => void) {
+  async connect(portInfo: { usbVendorId?: number; usbProductId?: number }, onUpdate: (data: any) => void) {
+    // Find the port in the worker context by matching vendor/product IDs.
+    // The main thread must call navigator.serial.requestPort() first to grant permission,
+    // then the worker can discover the same port via getPorts().
+    const serial = (navigator as any).serial as Serial;
+    const ports = await serial.getPorts();
+    const port = ports.find((p: SerialPort) => {
+      const info = p.getInfo();
+      return info.usbVendorId === portInfo.usbVendorId && info.usbProductId === portInfo.usbProductId;
+    });
+    if (!port) throw new Error('Port not found in worker. Ensure the port was requested on the main thread first.');
     dps = new DPS150Client(port, onUpdate);
     await dps.start();
     return true;
